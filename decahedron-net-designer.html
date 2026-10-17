@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fish decahedron net designer</title>
+<style>
+:root{--bg:#eef1f6;--fg:#0e1b30;--mut:#45526c;--card:#e3e8f0;--acc:#2b5cff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1b30;--fg:#eef1f6;--mut:#7d89a3;--card:#16233b;--acc:#6ea0ff}}
+:root[data-theme="dark"]{--bg:#0e1b30;--fg:#eef1f6;--mut:#7d89a3;--card:#16233b;--acc:#6ea0ff}
+html,body{margin:0}body{background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif;padding:12px;max-width:1100px;margin:auto}
+h1{font-size:20px;margin:4px 0}h2{font-size:15px;margin:14px 0 6px}p{color:var(--mut);margin:4px 0 8px}
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}.col{flex:1 1 320px;min-width:0}
+.paper{background:#fff;border-radius:8px;overflow-x:auto}.paper svg{display:block;max-width:100%;height:auto;touch-action:none}
+.ctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:8px 0}
+button{background:var(--card);color:var(--fg);border:1px solid var(--mut);border-radius:6px;padding:6px 10px;font:inherit;cursor:pointer}
+button.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+input[type=number]{width:64px}textarea{width:100%;height:120px;display:none}
+#warn{color:#c0392b;font-weight:600;min-height:1.4em}
+@media print{body>*:not(#netwrap){display:none!important}body{padding:0}#netwrap .paper{background:#fff}}
+</style></head><body>
+<h1>Fish decahedron net designer</h1>
+<p>The faded copy turned 180° around the edge midpoint is the partner animal it hugs. Drag the <b style="color:#d35400">orange</b> and <b style="color:#2471a3">blue</b> dots to reshape the fish. Every fish on the finished solid is a copy of this one tile, so the net always fits together when folded.</p>
+<div class="row">
+ <div class="col" style="max-width:520px"><div class="paper"><svg id="ed" viewBox="-1.15 -1.15 2.3 2.3"></svg></div>
+ <div id="warn"></div>
+ <div class="ctl">
+  <label><input type="checkbox" id="fillOn" checked> fill</label><input type="color" id="fillC" value="#bcd0ff">
+  <label>eye <input type="range" id="eyeR" min="0.015" max="0.08" step="0.005" value="0.035"></label>
+  <label><input type="checkbox" id="detOn"> gill/fin line</label>
+ </div>
+ <div class="ctl"><button id="rnd">Randomize</button><button id="rst">Reset (fish)</button><button id="bird">Load bird example</button><button id="hug">Load hugging pair</button><button id="bat">Load bat (crosses the border)</button></div></div>
+ <div class="col" style="flex-basis:300px"><h2>Tile logic</h2>
+ <p>The shaded tile is one fifth of a pentagon. The <b>orange</b> curve (centre → corner) is copied around the pentagon centre. The <b>blue</b> curve (corner → edge midpoint) is copied again, turned 180° around that midpoint, to finish the edge. Dots: <b>eye</b> (black), optional gill line (green).</p></div>
+</div>
+<div id="netwrap"><h2>Net (two flowers; the 10 edges of the left one carry glue tabs)</h2>
+<div class="ctl"><label>Pentagon edge length <input type="number" id="mm" value="25" min="10" max="60"> mm</label><button class="p" id="prt">Print net</button><button id="code">Show SVG code</button></div>
+<div class="paper"><div id="net"></div></div></div>
+<textarea id="ta" readonly></textarea>
+<script>
+const D=Math.PI/180,$=id=>document.getElementById(id);
+const DEF=()=>({A:[[.10,.12],[.28,-.14],[.55,0],[.85,.10]],B:[[.35,.18],[.70,-.12]],eye:[-.55,.45],det:[[[-.8,.4],[-.62,.3],[-.5,.5]]]});
+let S=DEF();
+const vt=k=>[Math.cos((90+72*k)*D),Math.sin((90+72*k)*D)];
+const rot=(p,c,a)=>{const ca=Math.cos(a),sa=Math.sin(a),x=p[0]-c[0],y=p[1]-c[1];return[c[0]+ca*x-sa*y,c[1]+sa*x+ca*y]};
+const F=[0,0],V0=vt(0),V1=vt(1),E=[(V0[0]+V1[0])/2,(V0[1]+V1[1])/2];
+function fr(P,Q){const dx=Q[0]-P[0],dy=Q[1]-P[1],L=Math.hypot(dx,dy),u=[dx/L,dy/L],n=[-u[1],u[0]];
+ return{f:(s,t)=>[P[0]+L*(s*u[0]+t*n[0]),P[1]+L*(s*u[1]+t*n[1])],
+ i:p=>{const x=p[0]-P[0],y=p[1]-P[1];return[(x*u[0]+y*u[1])/L,(x*n[0]+y*n[1])/L]}}}
+const fa=fr(F,V0),fb=fr(V0,E);
+function cr(pts,n=14){const P=[pts[0],...pts,pts[pts.length-1]],o=[];
+ for(let i=1;i<P.length-2;i++){const[p0,p1,p2,p3]=[P[i-1],P[i],P[i+1],P[i+2]];
+  for(let k=0;k<n;k++){const t=k/n;o.push([0,1].map(d=>.5*(2*p1[d]+(-p0[d]+p2[d])*t+(2*p0[d]-5*p1[d]+4*p2[d]-p3[d])*t*t+(-p0[d]+3*p1[d]-3*p2[d]+p3[d])*t**3)))}}
+ o.push(pts[pts.length-1]);return o}
+function tile(){
+ const A=cr([F,...S.A.map(q=>fa.f(...q)),V0]),B=cr([V0,...S.B.map(q=>fb.f(...q)),E]);
+ const Bc=B.slice().reverse().map(p=>rot(p,E,Math.PI)),Ar=A.map(p=>rot(p,F,72*D));
+ return{A,B,Bc,Ar,poly:[...A,...B.slice(1),...Bc.slice(1),...Ar.slice().reverse().slice(1)]}}
+const d=pts=>pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(3)+' '+p[1].toFixed(3)).join('');
+function cross(p,q,r,s){const o=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+ return o(p,q,r)*o(p,q,s)<0&&o(r,s,p)*o(r,s,q)<0}
+function bad(poly){const n=poly.length-1;for(let i=0;i<n;i++)for(let j=i+2;j<n;j++){if(i===0&&j===n-1)continue;if(cross(poly[i],poly[i+1],poly[j],poly[j+1]))return true}return false}
+function decoDefs(id,sw,nb){const t=tile(),eyeR=+$('eyeR').value,fill=$('fillOn').checked?$('fillC').value:'none';
+ let g=`<path d="${d(t.poly)}Z" fill="${fill}" stroke="#222" stroke-width="${sw}" stroke-linejoin="round"/><circle cx="${S.eye[0]}" cy="${S.eye[1]}" r="${eyeR}" fill="#222"/>`;
+ if($('detOn').checked)S.det.forEach(c=>g+=`<path d="${d(cr(c))}" fill="none" stroke="#222" stroke-width="${sw}" stroke-linecap="round"/>`);
+ let o=`<g id="${id}t">${g}</g><g id="${id}">`;for(let k=0;k<5;k++)o+=`<use href="#${id}t" transform="rotate(${72*k})"/>`;
+ if(nb)for(let k=0;k<5;k++){const a=vt(k),b=vt(k+1),ex=(a[0]+b[0])/2,ey=(a[1]+b[1])/2;for(let j=0;j<5;j++)o+=`<use href="#${id}t" transform="rotate(180 ${ex.toFixed(4)} ${ey.toFixed(4)}) rotate(${72*j})"/>`}
+ return o+'</g>'}
+/* editor */
+const ed=$('ed');let drag=null;
+function handles(){const h=[];S.A.forEach((q,i)=>h.push({id:'a'+i,c:'#d35400',g:()=>fa.f(...q),s:p=>S.A[i]=fa.i(p)}));
+ S.B.forEach((q,i)=>h.push({id:'b'+i,c:'#2471a3',g:()=>fb.f(...q),s:p=>S.B[i]=fb.i(p)}));
+ h.push({id:'e',c:'#111',g:()=>S.eye,s:p=>S.eye=p});
+ if($('detOn').checked)S.det.forEach((c,j)=>c.forEach((q,i)=>h.push({id:'d'+j+'_'+i,c:'#27ae60',g:()=>S.det[j][i],s:p=>S.det[j][i]=p})));return h}
+function render(){
+ const t=tile(),sw=.012;let pent=[0,1,2,3,4].map(vt);
+ let s=`<defs>${decoDefs('ed',sw)}<clipPath id="edc"><polygon points="${pent.map(p=>p.join(',')).join(' ')}"/></clipPath></defs><g transform="scale(1,-1)">`;
+ s+=`<g opacity=".35"><use href="#ed"/></g><g opacity=".5"><use href="#edt" transform="rotate(180 ${E[0]} ${E[1]})"/></g><polygon points="${pent.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#888" stroke-width=".01" stroke-dasharray=".03 .02"/>`;
+ s+=`<path d="${d(t.poly)}Z" fill="${$('fillOn').checked?$('fillC').value:'#fff'}" stroke="#222" stroke-width=".02" stroke-linejoin="round"/>`;
+ s+=`<circle cx="${S.eye[0]}" cy="${S.eye[1]}" r="${$('eyeR').value}" fill="#222"/>`;
+ if($('detOn').checked)S.det.forEach(c=>s+=`<path d="${d(cr(c))}" fill="none" stroke="#222" stroke-width=".014"/>`);
+ [[F,'5'],[V0,'3'],[E,'2']].forEach(([p,l])=>s+=`<circle cx="${p[0]}" cy="${p[1]}" r=".02" fill="#888"/>`);
+ handles().forEach(h=>{const p=h.g();s+=`<circle data-id="${h.id}" cx="${p[0]}" cy="${p[1]}" r=".042" fill="${h.c}" fill-opacity=".85" stroke="#fff" stroke-width=".01" style="cursor:grab"/>`});
+ ed.innerHTML=s+'</g>';$('warn').textContent=bad(t.poly)?'⚠ The outline crosses itself: move a dot until it stops overlapping.':'';
+ drawNet()}
+function pt(e){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(ed.getScreenCTM().inverse());return[p.x,-p.y]}
+ed.addEventListener('pointerdown',e=>{const id=e.target.dataset&&e.target.dataset.id;if(id){drag=id;ed.setPointerCapture(e.pointerId);e.preventDefault()}});
+ed.addEventListener('pointermove',e=>{if(!drag)return;const h=handles().find(x=>x.id===drag);if(h){h.s(pt(e));render()}});
+ed.addEventListener('pointerup',()=>drag=null);
+/* net */
+function netSVG(){
+ const mm=+$('mm').value||25,s=mm,r=s/(2*Math.sin(36*D)),sw=.3/r,gw=.3;
+ const cp=[0,1,2,3,4].map(k=>{const p=vt(k);return[p[0]*r,p[1]*r]});
+ const Ek=k=>[(cp[k][0]+cp[(k+1)%5][0])/2,(cp[k][1]+cp[(k+1)%5][1])/2];
+ const X=2.95*r;let out='',defs=decoDefs('f',sw,true)+`<clipPath id="pc"><polygon points="${[0,1,2,3,4].map(vt).map(p=>p.join(',')).join(' ')}"/></clipPath>`;
+ function tab(p,q,c){const dx=q[0]-p[0],dy=q[1]-p[1],L=Math.hypot(dx,dy),u=[dx/L,dy/L];let n=[-u[1],u[0]];
+  const m=[(p[0]+q[0])/2-c[0],(p[1]+q[1])/2-c[1]];if(n[0]*m[0]+n[1]*m[1]<0)n=[-n[0],-n[1]];
+  const h=.18*L,i=.3*L,a=[p[0]+u[0]*i+n[0]*h,p[1]+u[1]*i+n[1]*h],b=[q[0]-u[0]*i+n[0]*h,q[1]-u[1]*i+n[1]*h];
+  return`<polygon points="${[p,a,b,q].map(x=>x.map(v=>v.toFixed(2)).join(',')).join(' ')}" fill="#dbe3ef" stroke="#222" stroke-width="${gw}"/>`}
+ function pent(ox,c,deg,verts,shared,tabs,outerTab){
+  let o=`<g transform="translate(${(ox+c[0]).toFixed(2)} ${c[1].toFixed(2)}) rotate(${deg}) scale(${r})"><g clip-path="url(#pc)"><use href="#f"/></g><polygon points="${[0,1,2,3,4].map(vt).map(p=>p.join(',')).join(' ')}" fill="none" stroke="#888" stroke-width="${.25/r}" stroke-dasharray="${2/r} ${1.2/r}"/></g>`;
+  if(shared===null)return o;const W=verts.map(p=>[p[0]+ox,p[1]]);const cc=[c[0]+ox,c[1]];
+  for(let j=0;j<5;j++){if(j===shared)continue;const p=W[j],q=W[(j+1)%5],isT=tabs.includes(j)||outerTab&&(j===(shared+2)%5||j===(shared+3)%5);
+   o+=isT?tab(p,q,cc):`<line x1="${p[0].toFixed(2)}" y1="${p[1].toFixed(2)}" x2="${q[0].toFixed(2)}" y2="${q[1].toFixed(2)}" stroke="#222" stroke-width="${gw}"/>`}
+  return o}
+ for(const[ox,outer]of[[-X,true],[X,false]]){
+  out+=pent(ox,[0,0],0,cp,null,[],false);
+  for(let k=0;k<5;k++){const e=Ek(k),c=[2*e[0],2*e[1]],v=cp.map(p=>[2*e[0]-p[0],2*e[1]-p[1]]);
+   out+=pent(ox,c,180,v,k,[(k+4)%5],outer)}}
+ const H=2.95*r+.2*r,W=2*X+2*2.95*r;
+ return`<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(1)}mm" height="${(2*H).toFixed(1)}mm" viewBox="${(-W/2).toFixed(1)} ${(-H).toFixed(1)} ${W.toFixed(1)} ${(2*H).toFixed(1)}"><defs>${defs}</defs><g transform="scale(1,-1)">${out}</g></svg>`}
+function drawNet(){$('net').innerHTML=netSVG();$('ta').value=netSVG()}
+['fillOn','fillC','eyeR','detOn','mm'].forEach(i=>$(i).addEventListener('input',render));
+$('rst').onclick=()=>{S=DEF();render()};
+$('rnd').onclick=()=>{const R=()=>Math.random()*.6-.3;for(let i=0;i<300;i++){S.A=S.A.map(q=>[q[0],R()]);S.B=S.B.map(q=>[q[0],R()]);if(!bad(tile().poly))break}render()};
+$('bird').onclick=()=>{S={A:[[.10,-.1],[.28,.22],[.55,.12],[.85,-.08]],B:[[.35,.28],[.70,-.18]],eye:[-.6,.42],det:[[[-.8,.4],[-.62,.3],[-.5,.5]]]};render()};
+$('hug').onclick=()=>{S={A:[[.12,-.06],[.35,.30],[.6,.30],[.85,.14]],B:[[.2,.21],[.45,-.22],[.75,-.27]],eye:[-.4,.6],det:[[[-.37,.52],[-.4,.43],[-.37,.35]],[[-.4,.2],[-.28,.18],[-.15,.12]]]};$('detOn').checked=true;render()};
+$('bat').onclick=()=>{S={A:[[.12,-.1],[.3,.22],[.5,-.1],[.7,.22],[.88,-.05]],B:[[.2,-.3],[.5,-.45],[.8,-.2]],eye:[-.3,.93],det:[[[-.32,.6],[-.15,.58],[.05,.5]],[[-.3,.45],[-.15,.25],[.05,.12]],[[-.32,.75],[-.15,.82],[0,.9]],[[-.45,.26],[-.65,.22],[-.85,.3]]]};$('detOn').checked=true;render()};
+$('prt').onclick=()=>window.print();
+$('code').onclick=()=>{const t=$('ta');t.style.display=t.style.display==='block'?'none':'block';if(t.style.display==='block')t.select()};
+render();
+</script></body></html>
