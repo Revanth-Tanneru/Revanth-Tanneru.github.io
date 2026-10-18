@@ -21,8 +21,8 @@ button:hover,.btn:hover{border-color:var(--acc)}button:disabled{opacity:.45;curs
 .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
 .view{flex:1 1 360px;min-width:0;position:relative}
 .paper{background:#fff;border-radius:6px;padding:14px 14px 18px;box-shadow:0 1px 0 var(--line),0 8px 24px rgba(0,0,0,.12);display:flex;justify-content:center;min-height:200px;align-items:center}
-#out{display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;touch-action:none}
-#inp{position:absolute;right:10px;bottom:12px;width:min(28%,150px);height:auto;border:2px solid #fff;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.25);background:#000}
+#out{display:block;width:100%;max-width:576px;height:min(60vh,520px);object-fit:contain;image-rendering:pixelated;touch-action:none}
+#inp{position:absolute;right:10px;bottom:12px;width:auto;height:auto;max-width:min(28%,150px);max-height:34%;border:2px solid #fff;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.25);background:#000}
 .drop .paper{outline:2px dashed var(--acc);outline-offset:4px}
 .ctl{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:12px}
 .field{display:flex;flex-direction:column;gap:4px}
@@ -47,11 +47,11 @@ input[type=range]{width:100%;accent-color:var(--acc)}
   <label class="btn" for="file">&#8679; Upload photo</label>
   <input id="file" type="file" accept="image/*" hidden>
   <div class="samples" role="group" aria-label="Sample images">
-    <button class="sample" type="button" data-sample="testcard" title="Test card" aria-label="Test card"><canvas id="tcThumb" width="52" height="52"></canvas></button>
+    <button class="sample" type="button" data-sample="cat" title="Punk cat" aria-label="Punk cat sample"><img src="/img/1bit-camera/samples/cat-thumb.jpg" alt=""></button>
     <button class="sample" type="button" data-sample="portrait" title="Portrait" aria-label="Portrait sample"><img src="/img/1bit-camera/samples/portrait-thumb.jpg" alt=""></button>
-    <button class="sample" type="button" data-sample="workshop" title="Workshop" aria-label="Workshop sample"><img src="/img/1bit-camera/samples/workshop-thumb.jpg" alt=""></button>
-    <button class="sample" type="button" data-sample="group" title="Group" aria-label="Group sample"><img src="/img/1bit-camera/samples/group-thumb.jpg" alt=""></button>
-    <button class="sample" type="button" data-sample="concept" title="Camera concept" aria-label="Camera concept sample"><img src="/img/1bit-camera/samples/concept-thumb.jpg" alt=""></button>
+    <button class="sample" type="button" data-sample="dobermann" title="Dobermann" aria-label="Dobermann sample"><img src="/img/1bit-camera/samples/dobermann-thumb.jpg" alt=""></button>
+    <button class="sample" type="button" data-sample="gym" title="Gym portrait" aria-label="Gym portrait sample"><img src="/img/1bit-camera/samples/gym-thumb.jpg" alt=""></button>
+    <button class="sample" type="button" data-sample="testcard" title="Test card" aria-label="Test card"><canvas id="tcThumb" width="52" height="52"></canvas></button>
   </div>
 </div>
 <p id="status" class="mono" role="status"></p>
@@ -64,7 +64,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
   <div class="ctl">
     <div class="field"><label for="fx">Effect</label><select id="fx"></select></div>
     <div class="field" id="fThresh"><label for="thresh">Threshold / gamma <b id="threshV">128</b></label><input id="thresh" type="range" min="0" max="255" value="128"></div>
-    <div class="field" id="fDot"><label for="dot">Dot size <b id="dotV">2</b></label><input id="dot" type="range" min="1" max="16" value="2"></div>
+    <div class="field" id="fDot"><label for="dot">Dot size <b id="dotV">1</b></label><input id="dot" type="range" min="1" max="16" value="1"></div>
     <div class="field" id="fLevels"><label for="levels">Levels <b id="levelsV">3</b></label><input id="levels" type="range" min="2" max="6" value="3"></div>
     <div class="toggles">
       <label><input id="invert" type="checkbox"> Invert</label>
@@ -78,7 +78,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
   </div>
 </div>
 <script>
-// ── Effects engine: ported from the firmware (main/effects.c), same as /1bit-camera/sim/ ──
+// ── Effects engine: ported from the firmware (main/effects.c in the 1bit-camera repo) ──
 // ── Effect names (matches firmware FX enum order) ──────────
 const FX = [
   {id:0, name:'fs',           label:'FS dither'},
@@ -809,6 +809,7 @@ const fxSel = $('fx'), thresh = $('thresh'), dot = $('dot'), levels = $('levels'
 const invertChk = $('invert'), preprocChk = $('preproc');
 
 FX.forEach(f => { const o = document.createElement('option'); o.value = f.id; o.textContent = String(f.id).padStart(2, '0') + '  ' + f.label; fxSel.appendChild(o); });
+fxSel.value = '6';   // default effect: Bayer 8×8
 
 let source = null;          // {data: Uint8Array grey, w, h} already at OUTPUT_W wide
 let outImg = null;
@@ -900,7 +901,7 @@ video.setAttribute('playsinline', ''); video.setAttribute('aria-hidden', 'true')
 video.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
 document.body.appendChild(video);
 let stream = null, live = false, frozen = false, facing = 'user', raf = 0, last = 0, gotFrame = false;
-let onScreen = true;
+let onScreen = true, hiddenByHost = false;   // host page can hide us (e.g. home-page scroll stage)
 
 // why the camera can't start, in words a visitor can act on
 function cameraProblem(err) {
@@ -982,11 +983,15 @@ snapBtn.addEventListener('click', () => {
 // pause the stream (camera light off) when out of view or tab hidden; resume when back
 async function syncStream() {
   if (!live) return;
-  const want = onScreen && !document.hidden;
+  const want = onScreen && !hiddenByHost && !document.hidden;
   if (!want && stream) { cancelAnimationFrame(raf); closeStream(); }
   else if (want && !stream) { try { await openStream(); raf = requestAnimationFrame(loop); } catch { stopCamera(); } }
 }
 document.addEventListener('visibilitychange', syncStream);
+addEventListener('message', e => {
+  if (e.origin !== location.origin || !e.data || e.data.type !== '1bit-visibility') return;
+  hiddenByHost = !e.data.visible; syncStream();
+});
 addEventListener('pagehide', () => closeStream());
 if ('IntersectionObserver' in window)
   new IntersectionObserver(es => { onScreen = es[0].isIntersecting; syncStream(); }).observe(out);
@@ -999,8 +1004,9 @@ $('saveBtn').addEventListener('click', () => {
   a.click();
 });
 
-// start on the test card
+// show the test card instantly, then switch to the first sample once it has loaded
 useImage(testcard, 'testcard', 'Test card');
+document.querySelector('[data-sample]').click();
 </script>
 </body>
 </html>
