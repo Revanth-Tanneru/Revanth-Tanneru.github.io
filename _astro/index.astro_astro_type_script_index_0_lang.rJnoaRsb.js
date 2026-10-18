@@ -90,3 +90,59 @@ if(cam){showCam(swapped);cam.style.opacity=swapped?"1":"0";cam.style.pointerEven
 };
 const req=()=>{queued||(queued=!0,requestAnimationFrame(render))};
 addEventListener("scroll",req,{passive:!0});addEventListener("resize",req,{passive:!0});render()})();
+(()=>{
+// Manifesto → selected work, pinned. Scroll distance (viewport heights) inside the section:
+//   0 – 1.0   the manifesto fills with colour (scrubbed)
+//   1.1       trigger: "MAKE IT ·" glides up into the heading, the rest + banner leave,
+//             the first group of projects arrives (timed, so it never rests half-way)
+//   1.1 + k·SPAN  group k: the verb scrambles to MAKE / HOLD / SHOW / TEACH and its cards
+//             swap in; while a group is active its cards pan sideways if they overflow
+const sec=document.querySelector("[data-words]");if(!sec)return;
+if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+const fill=sec.querySelector("[data-words-fill]"),first=sec.querySelector("[data-words-first]"),head=sec.querySelector("[data-words-head]"),verbEl=sec.querySelector("[data-words-verb]");
+const decks=[...sec.querySelectorAll("[data-words-deck]")],steps=[...sec.querySelectorAll("[data-words-go]")];
+const VERBS=decks.map(d=>d.dataset.verb.toUpperCase());
+const FILL_END=1.0,TRIG=1.1,SPAN=.9,HYS=.04,clamp=v=>Math.min(1,Math.max(0,v));
+let work=!1,group=-1,queued=!1,morph=0;
+const startOf=k=>TRIG+k*SPAN;
+
+// "MAKE IT ·" in the manifesto ⇄ the heading: FLIP between the two boxes
+const flip=toHead=>{
+  head.style.transition="none";head.style.transform="none";
+  const a=first.getBoundingClientRect(),b=head.getBoundingClientRect(),sx=a.width/b.width;
+  const fromHead=`translate(${a.left-b.left}px,${a.top-b.top}px) scale(${sx})`;
+  head.style.transition="none";head.style.visibility="visible";first.style.visibility="hidden";
+  head.style.transform=toHead?fromHead:"none";head.getBoundingClientRect();
+  head.style.transition="transform .7s cubic-bezier(.7,0,.2,1)";head.style.transform=toHead?"none":fromHead;
+  clearTimeout(head._t);if(!toHead)head._t=setTimeout(()=>{if(!work){head.style.visibility="hidden";first.style.visibility="visible"}},720)};
+
+// verb scramble (timed), e.g. MAKE → HOLD
+const GL="ABCDEFGHJKLMNOPQRSTUVWXYZ";
+const setVerb=word=>{cancelAnimationFrame(morph);const t0=performance.now(),D=420;
+  const tick=now=>{const q=clamp((now-t0)/D),n=Math.round(q*word.length);
+    verbEl.textContent=[...word].map((c,i)=>i<n?c:GL[Math.random()*GL.length|0]).join("");
+    if(q<1)morph=requestAnimationFrame(tick)};morph=requestAnimationFrame(tick)};
+
+const show=k=>{decks.forEach((d,i)=>{d.dataset.state=i===k?"on":i<k?"before":"after";d.inert=i!==k;d.setAttribute("aria-hidden",String(i!==k))});
+  steps.forEach((b,i)=>b.setAttribute("aria-current",String(i===k)));
+  head.setAttribute("aria-label",VERBS[k]+" it")};
+show(0);verbEl.textContent=VERBS[0];
+
+const render=()=>{queued=!1;
+  const vh=innerHeight,s=-sec.getBoundingClientRect().top/vh;
+  fill.style.setProperty("--fill",(clamp(s/FILL_END)*100).toFixed(1));
+  // enter / leave the work view
+  const wantWork=work?s>TRIG-HYS:s>TRIG+HYS;
+  if(wantWork!==work){work=wantWork;sec.classList.toggle("is-work",work);flip(work);if(!work){group=0;show(0);verbEl.textContent=VERBS[0]}}
+  if(!work)return;
+  // which group, with a little hysteresis at each boundary
+  let k=Math.max(0,Math.min(decks.length-1,Math.floor((s-TRIG)/SPAN)));
+  if(group>=0&&k!==group){const edge=startOf(Math.max(k,group));if(Math.abs(s-edge)<HYS)k=group}
+  if(k!==group){const prev=group;group=k;show(k);if(prev>=0||k>0)setVerb(VERBS[k])}
+  // carousel: pan the active track across its overflow during the group's span
+  const tr=decks[group].querySelector("[data-words-track]"),over=Math.max(0,tr.scrollWidth-tr.parentElement.parentElement.clientWidth);
+  const g=clamp(((s-startOf(group))/SPAN-.12)/.7);
+  tr.style.setProperty("--pan",(-over*g).toFixed(1)+"px")};
+const req=()=>{queued||(queued=!0,requestAnimationFrame(render))};
+steps.forEach((b,i)=>b.addEventListener("click",()=>{const top=sec.getBoundingClientRect().top+scrollY;scrollTo({top:top+(startOf(i)+.08)*innerHeight,behavior:"smooth"})}));
+addEventListener("scroll",req,{passive:!0});addEventListener("resize",req,{passive:!0});render()})();
