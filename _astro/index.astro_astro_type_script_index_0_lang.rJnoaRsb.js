@@ -305,7 +305,8 @@ const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches,hint=table.q
 const NAMES={oldest_portfolio:"early portfolio",portfolio_f:"portfolio",experiments:"experiment"};
 const label=src=>{const m=/\/([a-z_]+)\/([a-z]*?)(\d+)(?:_(\d+))?\.\w+$/.exec(src);if(!m)return"playground";
   return(NAMES[m[1]]||m[1].replace(/_/g," "))+" · "+(m[2]==="slide"?"slide ":"")+m[3]+(m[4]?"."+m[4]:"")};
-const POOL=sec.dataset.playground.split("|").map(e=>{const[src,dim]=e.split("@"),[w,h]=(dim||"1x1").split("x").map(Number);return{src,w,h,cap:label(src)}});
+// each entry is "src@WxH@caption"; captions match the Playground page sections (e.g. "Posters & covers · 06")
+const POOL=sec.dataset.playground.split("|").map(e=>{const[src,dim,cap]=e.split("@"),[w,h]=(dim||"1x1").split("x").map(Number);return{src,w,h,cap:cap||label(src)}});
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const easeOutBack=t=>{const c=1.4;return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2)};
 let cards=[],W=0,H=0,L=200,z=1,raf=0,last=0,dealt=!1,held=null;
@@ -339,7 +340,15 @@ const deal=animate=>{
     if(!animate||reduce){c.x=t.x;c.y=t.y;c.r=r;place(c);return}
     c.x=W/2+rand(-40,40);c.y=H+c.h;c.r=rand(-40,40);place(c);
     c.tw={t0:now+i*85,dur:720,from:{x:c.x,y:c.y,r:c.r},to:{x:t.x,y:t.y,r}}});
-  cards.push(...fresh);dealt=!0;kick()};
+  cards.push(...fresh);dealt=!0;kick();
+  // once the prints have landed, tape down up to two that sit on top of the pile (nothing overlaps them)
+  setTimeout(()=>tapeTop(fresh),animate&&!reduce?fresh.length*85+780:0)};
+const tapeTop=fresh=>{const live=fresh.filter(c=>!c.dying&&c.el.isConnected);if(!live.length)return;
+  const box=c=>c.el.getBoundingClientRect(),zi=c=>+c.el.style.zIndex||0;
+  const hit=(a,b)=>a.left<b.right&&b.left<a.right&&a.top<b.bottom&&b.top<a.bottom;
+  const open=live.filter(c=>{const r=box(c);return!cards.some(o=>o!==c&&!o.dying&&zi(o)>zi(c)&&hit(r,box(o)))});
+  (open.length?open:[live.reduce((a,b)=>zi(b)>zi(a)?b:a)]).sort(()=>Math.random()-.5).slice(0,2).forEach(c=>{
+    const t=document.createElement("span");t.className="lt__tape";t.style.setProperty("--tr",rand(-8,8).toFixed(1)+"deg");t.style.left=rand(30,70).toFixed(0)+"%";c.el.appendChild(t)})};
 
 const tossAway=()=>{cards.forEach(c=>{if(c.dying)return;const a=Math.atan2(c.y-H/2,c.x-W/2)+rand(-.5,.5),sp=rand(1100,1600);
   c.dying=!0;c.tw=null;c.vx=Math.cos(a)*sp;c.vy=Math.sin(a)*sp-400;c.vr=rand(-500,500)});kick()};
@@ -367,7 +376,7 @@ function bind(c){const el=c.el;
   el.addEventListener("pointerdown",e=>{if(c.dying||e.button>0)return;e.preventDefault();el.setPointerCapture(e.pointerId);
     const tr=table.getBoundingClientRect();c.tw=null;c.vx=c.vy=c.vr=0;el.style.zIndex=++z;el.classList.add("is-held");
     held={card:c,id:e.pointerId,ox:e.clientX-tr.left-c.x,oy:e.clientY-tr.top-c.y,sx:e.clientX,sy:e.clientY,t0:performance.now(),lx:e.clientX,ly:e.clientY,lt:performance.now(),vx:0,vy:0,moved:0,r0:c.r};
-    place(c);if(hint)hint.style.opacity="0"});
+    place(c)});
   el.addEventListener("pointermove",e=>{if(!held||held.card!==c||e.pointerId!==held.id)return;
     const tr=table.getBoundingClientRect(),now=performance.now(),dt=Math.max(1,now-held.lt)/1000;
     const ivx=(e.clientX-held.lx)/dt,ivy=(e.clientY-held.ly)/dt;held.vx=held.vx*.6+ivx*.4;held.vy=held.vy*.6+ivy*.4;
@@ -407,7 +416,26 @@ new ResizeObserver(()=>{const ow=W,oh=H;size();if(!dealt||!ow)return;
 size();
 if(reduce)deal(!1);
 else{const io=new IntersectionObserver(es=>{if(!es[0].isIntersecting||dealt)return;io.disconnect();
-  const wait=()=>{if(dealt)return;if(parseFloat(getComputedStyle(sec).opacity)>=.95)deal(!0);else requestAnimationFrame(wait)};wait()},{threshold:.35});io.observe(table)}})();
+  // the backlight eases on, then the prints are dealt
+  const wait=()=>{if(dealt)return;if(parseFloat(getComputedStyle(sec).opacity)>=.95){table.classList.add("is-warming");setTimeout(()=>deal(!0),300);setTimeout(()=>table.classList.remove("is-warming"),600)}else requestAnimationFrame(wait)};wait()},{threshold:.35});io.observe(table)}
+
+// 2. loupe: hold Shift over the table to magnify the print under the pointer
+if(matchMedia("(hover: hover) and (pointer: fine)").matches){
+  const lp=document.createElement("div");lp.className="lt__loupe";lp.setAttribute("aria-hidden","true");table.appendChild(lp);
+  const Z=2.6,R=80;let shift=!1,mx=-1,my=-1;
+  const upd=()=>{if(!shift||mx<0||held){lp.classList.remove("is-on");return}
+    const tr=table.getBoundingClientRect();lp.classList.add("is-on");lp.style.transform=`translate(${(mx-tr.left-R).toFixed(1)}px,${(my-tr.top-R).toFixed(1)}px)`;
+    const card=document.elementsFromPoint(mx,my).find(e=>e.classList&&e.classList.contains("lt__card")),img=card?.querySelector("img");
+    if(!img){lp.style.backgroundImage="none";return}
+    const r=img.getBoundingClientRect();
+    lp.style.backgroundImage=`url("${img.currentSrc||img.src}")`;
+    lp.style.backgroundSize=`${(r.width*Z).toFixed(1)}px ${(r.height*Z).toFixed(1)}px`;
+    lp.style.backgroundPosition=`${(-(mx-r.left)*Z+R).toFixed(1)}px ${(-(my-r.top)*Z+R).toFixed(1)}px`};
+  table.addEventListener("pointermove",e=>{if(e.pointerType==="mouse"){mx=e.clientX;my=e.clientY;shift=e.shiftKey;upd()}});
+  table.addEventListener("pointerleave",()=>{mx=-1;upd()});
+  addEventListener("keydown",e=>{if(e.key==="Shift"){shift=!0;upd()}});
+  addEventListener("keyup",e=>{if(e.key==="Shift"){shift=!1;upd()}});
+  if(hint)hint.textContent="drag · toss · click to look closer · hold shift for a loupe"}})();
 (()=>{
 // home finale: "before you ask" + "say hello" + the footer share exactly one screen,
 // so publish the footer's real height for the finale's min-height

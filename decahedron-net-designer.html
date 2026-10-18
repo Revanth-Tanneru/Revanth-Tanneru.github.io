@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Fish decahedron net designer</title>
+<title>Decahedron net designer</title>
 <style>
 :root{--bg:#eef1f6;--fg:#0e1b30;--mut:#45526c;--card:#e3e8f0;--acc:#2b5cff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1b30;--fg:#eef1f6;--mut:#7d89a3;--card:#16233b;--acc:#6ea0ff}}
@@ -23,8 +23,8 @@ input[type=number]{width:64px}textarea{width:100%;height:120px;display:none}
 @keyframes hintbob{0%,100%{translate:-50% 0}50%{translate:-50% -6px}}
 @media (prefers-reduced-motion:reduce){#ed.hint circle[data-id],#hint{animation:none}}
 </style></head><body>
-<h1>Fish decahedron net designer</h1>
-<p>The faded copy turned 180° around the edge midpoint is the partner animal it hugs. Drag the <b style="color:#d35400">orange</b> and <b style="color:#2471a3">blue</b> dots to reshape the fish. Every fish on the finished solid is a copy of this one tile, so the net always fits together when folded.</p>
+<h1>Decahedron net designer</h1>
+<p>The faded copy turned 180° around the edge midpoint is the partner animal it hugs. Drag the <b style="color:#d35400">orange</b> and <b style="color:#2471a3">blue</b> dots to reshape the animal. Every animal on the finished solid is a copy of this one tile, so the net always fits together when folded.</p>
 <div class="row">
  <div class="col" style="max-width:520px"><div class="paper"><svg id="ed" viewBox="-1.15 -1.15 2.3 2.3"></svg><div id="hint">&#9995; Drag the orange &amp; blue dots</div></div>
  <div id="warn"></div>
@@ -33,7 +33,7 @@ input[type=number]{width:64px}textarea{width:100%;height:120px;display:none}
   <label>eye <input type="range" id="eyeR" min="0.015" max="0.08" step="0.005" value="0.035"></label>
   <label><input type="checkbox" id="detOn"> gill/fin line</label>
  </div>
- <div class="ctl"><button id="rnd">Randomize</button><button id="rst">Reset (fish)</button><button id="bird">Load bird example</button><button id="hug">Load hugging pair</button><button id="bat">Load bat (crosses the border)</button></div></div>
+ <div class="ctl"><button id="rnd">Randomize</button><button id="dino">Load dino</button><button id="bird">Load bird</button></div></div>
  <div class="col" style="flex-basis:300px"><h2>Tile logic</h2>
  <p>The shaded tile is one fifth of a pentagon. The <b>orange</b> curve (centre → corner) is copied around the pentagon centre. The <b>blue</b> curve (corner → edge midpoint) is copied again, turned 180° around that midpoint, to finish the edge. Dots: <b>eye</b> (black), optional gill line (green).</p></div>
 </div>
@@ -43,7 +43,10 @@ input[type=number]{width:64px}textarea{width:100%;height:120px;display:none}
 <textarea id="ta" readonly></textarea>
 <script>
 const D=Math.PI/180,$=id=>document.getElementById(id);
-const DEF=()=>({A:[[.10,.12],[.28,-.14],[.55,0],[.85,.10]],B:[[.35,.18],[.70,-.12]],eye:[-.55,.45],det:[[[-.8,.4],[-.62,.3],[-.5,.5]]]});
+/* presets taken from the designs supplied as files: the dino (Dineobeats.pdf) and the bird (bird svg.svg) */
+const PRESETS={dino:{A:[[0.137,-0.074],[0.337,0.034],[0.547,-0.186],[0.845,-0.124]],B:[[0.231,0.463],[0.786,0.165],[1.144,0.162]],eye:[-0.761,0.523],det:[],look:{fill:'#9fd0d8',eyeR:0.035,det:false}},bird:{A:[[0.1,-0.1],[0.28,0.22],[0.55,0.12],[0.85,-0.08]],B:[[0.35,0.28],[0.7,-0.18]],eye:[-0.843,0.475],det:[[[-0.704,0.324],[-0.662,0.403],[-0.712,0.517]]],look:{fill:'#bcd0ff',eyeR:0.035,det:true}}};
+const DEF=()=>{const p=JSON.parse(JSON.stringify(PRESETS.dino));delete p.look;return p};
+function loadPreset(k){const p=JSON.parse(JSON.stringify(PRESETS[k]));$('fillOn').checked=true;$('fillC').value=p.look.fill;$('eyeR').value=p.look.eyeR;$('detOn').checked=p.look.det;delete p.look;S=p;render()}
 let S=DEF();
 const vt=k=>[Math.cos((90+72*k)*D),Math.sin((90+72*k)*D)];
 const rot=(p,c,a)=>{const ca=Math.cos(a),sa=Math.sin(a),x=p[0]-c[0],y=p[1]-c[1];return[c[0]+ca*x-sa*y,c[1]+sa*x+ca*y]};
@@ -115,13 +118,12 @@ function netSVG(){
  return`<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(1)}mm" height="${(2*H).toFixed(1)}mm" viewBox="${(-W/2).toFixed(1)} ${(-H).toFixed(1)} ${W.toFixed(1)} ${(2*H).toFixed(1)}"><defs>${defs}</defs><g transform="scale(1,-1)">${out}</g></svg>`}
 function drawNet(){$('net').innerHTML=netSVG();$('ta').value=netSVG()}
 ['fillOn','fillC','eyeR','detOn','mm'].forEach(i=>$(i).addEventListener('input',render));
-$('rst').onclick=()=>{S=DEF();render()};
 $('rnd').onclick=()=>{const R=()=>Math.random()*.6-.3;for(let i=0;i<300;i++){S.A=S.A.map(q=>[q[0],R()]);S.B=S.B.map(q=>[q[0],R()]);if(!bad(tile().poly))break}render()};
-$('bird').onclick=()=>{S={A:[[.10,-.1],[.28,.22],[.55,.12],[.85,-.08]],B:[[.35,.28],[.70,-.18]],eye:[-.6,.42],det:[[[-.8,.4],[-.62,.3],[-.5,.5]]]};render()};
-$('hug').onclick=()=>{S={A:[[.12,-.06],[.35,.30],[.6,.30],[.85,.14]],B:[[.2,.21],[.45,-.22],[.75,-.27]],eye:[-.4,.6],det:[[[-.37,.52],[-.4,.43],[-.37,.35]],[[-.4,.2],[-.28,.18],[-.15,.12]]]};$('detOn').checked=true;render()};
-$('bat').onclick=()=>{S={A:[[.12,-.1],[.3,.22],[.5,-.1],[.7,.22],[.88,-.05]],B:[[.2,-.3],[.5,-.45],[.8,-.2]],eye:[-.3,.93],det:[[[-.32,.6],[-.15,.58],[.05,.5]],[[-.3,.45],[-.15,.25],[.05,.12]],[[-.32,.75],[-.15,.82],[0,.9]],[[-.45,.26],[-.65,.22],[-.85,.3]]]};$('detOn').checked=true;render()};
+$('dino').onclick=()=>loadPreset('dino');
+$('bird').onclick=()=>loadPreset('bird');
 $('prt').onclick=()=>window.print();
 $('code').onclick=()=>{const t=$('ta');t.style.display=t.style.display==='block'?'none':'block';if(t.style.display==='block')t.select()};
+$('fillC').value=PRESETS.dino.look.fill;
 ed.classList.add('hint');
 render();
 /* demo mode (?demo, used by the home page): the dots move by themselves until someone takes over.
@@ -130,7 +132,7 @@ if(/[?&]demo\b/.test(location.search)){
  let on=true,visible=true,last=0,t0=performance.now();const base=DEF(),hint=$('hint');
  const warn=$('warn');if(hint)hint.style.display='none';ed.classList.remove('hint');if(warn)warn.style.visibility='hidden';
  const tick=now=>{if(!on)return;requestAnimationFrame(tick);if(!visible||now-last<50)return;last=now;
-  // gentle sway around the default fish (the self-crossing check is too strict to steer by)
+  // gentle sway around the default dino (the self-crossing check is too strict to steer by)
   const t=(now-t0)/1000;
   S.A=base.A.map((q,i)=>[q[0],q[1]+.12*Math.sin(t*.9+i*1.7)]);
   S.B=base.B.map((q,i)=>[q[0],q[1]+.1*Math.sin(t*.7+i*2.1+1)]);
