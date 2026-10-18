@@ -3,7 +3,7 @@
 const h=document.querySelector(".site-head");if(!h)return;
 const set=()=>document.documentElement.style.setProperty("--head-h",h.offsetHeight+"px");
 "ResizeObserver"in window?new ResizeObserver(set).observe(h):addEventListener("resize",set);set()})();
-(()=>{const i=document.querySelector("[data-hero-canvas]"),t=i?.getContext("2d");if(!i||!t)return;const l=matchMedia("(prefers-reduced-motion: reduce)").matches,r=(1+Math.sqrt(5))/2,s=1/r,d=[[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1],[0,s,r],[0,s,-r],[0,-s,r],[0,-s,-r],[s,r,0],[s,-r,0],[-s,r,0],[-s,-r,0],[r,0,s],[r,0,-s],[-r,0,s],[-r,0,-s]],g=2*s,o=[];for(let e=0;e<d.length;e++)for(let p=e+1;p<d.length;p++){const M=Math.hypot(d[e][0]-d[p][0],d[e][1]-d[p][1],d[e][2]-d[p][2]);Math.abs(M-g)<.05&&o.push([e,p])}let a=-.42,n=.62,v=-.42,c=.62;l||addEventListener("pointermove",e=>{c=.62+(e.clientX/innerWidth-.5)*1.6,v=-.42+(e.clientY/innerHeight-.5)*1.1},{passive:!0});let h=0,f=0,u=1;const I=()=>{h=i.clientWidth,f=i.clientHeight,u=Math.min(2,window.devicePixelRatio||1),i.width=Math.max(1,Math.round(h*u)),i.height=Math.max(1,Math.round(f*u))};"ResizeObserver"in window?new ResizeObserver(I).observe(i):addEventListener("resize",I),I();const L=e=>{const p=Math.cos(n),M=Math.sin(n),E=e[0]*p+e[2]*M,y=-e[0]*M+e[2]*p,S=Math.cos(a),w=Math.sin(a);return[E,e[1]*S-y*w,e[1]*w+y*S]},b=performance.now(),m=e=>{const p=(e-b)/1e3;l||(a+=(v-a)*.05,n+=(c+p*.22-n)*.05),t.setTransform(u,0,0,u,0,0),t.clearRect(0,0,h,f);const M=h/2,E=f/2,y=Math.min(h,f)*.25,S=d.map(L);let w=1/0,z=-1/0;for(const x of S)x[2]<w&&(w=x[2]),x[2]>z&&(z=x[2]);const k=z-w||1;t.strokeStyle="rgba(14,27,48,0.16)",t.lineWidth=1,t.setLineDash([4,7]),t.beginPath(),t.arc(M,E,y*1.6,0,Math.PI*2),t.stroke(),t.setLineDash([]);for(const[x,q]of o){const O=S[x],P=S[q],A=((O[2]+P[2])/2-w)/k;t.strokeStyle=`rgba(43,92,255,${(.12+A*.82).toFixed(3)})`,t.lineWidth=.7+A*1.7,t.beginPath(),t.moveTo(M+O[0]*y,E-O[1]*y),t.lineTo(M+P[0]*y,E-P[1]*y),t.stroke()}for(const x of S){const q=(x[2]-w)/k;t.fillStyle=q>.5?"rgba(14,27,48,0.9)":"rgba(14,27,48,0.3)",t.beginPath(),t.arc(M+x[0]*y,E-x[1]*y,1.1+q*2.3,0,Math.PI*2),t.fill()}l||requestAnimationFrame(m)};requestAnimationFrame(m)})();(()=>{const i=document.querySelector("[data-playground]");if(!i||matchMedia("(prefers-reduced-motion: reduce)").matches)return;const t=(i.dataset.playground||"").split("|").filter(Boolean);if(t.length<2)return;const l=o=>{const a=/\/([^/]+)\/p(\d+)(?:_\d+)?\.webp/.exec(o)??[];return(a[1]??"playground").replace(/_/g," ")+" · p"+(a[2]??"")},r=new Map,s=o=>{if(r.has(o))return;const a=new Image;a.src=o,r.set(o,a)};if("IntersectionObserver"in window){const o=new IntersectionObserver(a=>{a.some(n=>n.isIntersecting)&&(t.forEach(s),o.disconnect())},{rootMargin:"600px 0px"});o.observe(i)}else t.forEach(s);const d=[...i.querySelectorAll(".mosaic__item")],g=new Set;d.forEach((o,a)=>{const n=o.querySelector("img"),v=o.querySelector(".mosaic__cap");if(!n)return;let c=n.getAttribute("src")||t[0];g.add(c);const h=()=>{n.naturalWidth&&n.naturalHeight&&(n.style.aspectRatio=`${n.naturalWidth} / ${n.naturalHeight}`)};n.complete&&n.naturalWidth?h():n.addEventListener("load",h,{once:!0});let f=0;const u=()=>{let b=t.filter(e=>e!==c&&!g.has(e));b.length||(b=t.filter(e=>e!==c));const m=b[Math.floor(Math.random()*b.length)];!m||m===c||(g.delete(c),g.add(m),c=m,o.classList.remove("is-flick"),o.offsetWidth,n.addEventListener("load",h,{once:!0}),n.src=m,n.alt=l(m),v&&(v.textContent=l(m)),o.classList.add("is-flick"))},I=()=>{f||(f=window.setInterval(u,2200+a%5*420))},L=()=>{clearInterval(f),f=0};"IntersectionObserver"in window?new IntersectionObserver(b=>b.forEach(m=>m.isIntersecting?I():L()),{rootMargin:"0px 0px -10% 0px"}).observe(o):I()})})();(()=>{
+(()=>{const i=document.querySelector("[data-hero-canvas]"),t=i?.getContext("2d");if(!i||!t)return;const l=matchMedia("(prefers-reduced-motion: reduce)").matches,r=(1+Math.sqrt(5))/2,s=1/r,d=[[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1],[0,s,r],[0,s,-r],[0,-s,r],[0,-s,-r],[s,r,0],[s,-r,0],[-s,r,0],[-s,-r,0],[r,0,s],[r,0,-s],[-r,0,s],[-r,0,-s]],g=2*s,o=[];for(let e=0;e<d.length;e++)for(let p=e+1;p<d.length;p++){const M=Math.hypot(d[e][0]-d[p][0],d[e][1]-d[p][1],d[e][2]-d[p][2]);Math.abs(M-g)<.05&&o.push([e,p])}let a=-.42,n=.62,v=-.42,c=.62;l||addEventListener("pointermove",e=>{c=.62+(e.clientX/innerWidth-.5)*1.6,v=-.42+(e.clientY/innerHeight-.5)*1.1},{passive:!0});let h=0,f=0,u=1;const I=()=>{h=i.clientWidth,f=i.clientHeight,u=Math.min(2,window.devicePixelRatio||1),i.width=Math.max(1,Math.round(h*u)),i.height=Math.max(1,Math.round(f*u))};"ResizeObserver"in window?new ResizeObserver(I).observe(i):addEventListener("resize",I),I();const L=e=>{const p=Math.cos(n),M=Math.sin(n),E=e[0]*p+e[2]*M,y=-e[0]*M+e[2]*p,S=Math.cos(a),w=Math.sin(a);return[E,e[1]*S-y*w,e[1]*w+y*S]},b=performance.now(),m=e=>{const p=(e-b)/1e3;l||(a+=(v-a)*.05,n+=(c+p*.22-n)*.05),t.setTransform(u,0,0,u,0,0),t.clearRect(0,0,h,f);const M=h/2,E=f/2,y=Math.min(h,f)*.25,S=d.map(L);let w=1/0,z=-1/0;for(const x of S)x[2]<w&&(w=x[2]),x[2]>z&&(z=x[2]);const k=z-w||1;t.strokeStyle="rgba(14,27,48,0.16)",t.lineWidth=1,t.setLineDash([4,7]),t.beginPath(),t.arc(M,E,y*1.6,0,Math.PI*2),t.stroke(),t.setLineDash([]);for(const[x,q]of o){const O=S[x],P=S[q],A=((O[2]+P[2])/2-w)/k;t.strokeStyle=`rgba(43,92,255,${(.12+A*.82).toFixed(3)})`,t.lineWidth=.7+A*1.7,t.beginPath(),t.moveTo(M+O[0]*y,E-O[1]*y),t.lineTo(M+P[0]*y,E-P[1]*y),t.stroke()}for(const x of S){const q=(x[2]-w)/k;t.fillStyle=q>.5?"rgba(14,27,48,0.9)":"rgba(14,27,48,0.3)",t.beginPath(),t.arc(M+x[0]*y,E-x[1]*y,1.1+q*2.3,0,Math.PI*2),t.fill()}l||requestAnimationFrame(m)};requestAnimationFrame(m)})();(()=>{
 // Pinned intro stage, driven by scroll distance (in viewport heights):
 //   0 – 2.0   hero copy → decahedron flies → net designer unfolds (scene 1 → 2), scrubbed by scroll
 //   2.2       trigger: the screen dithers into ink + 0/1s, swaps, dithers back out (scene 2 → 3).
@@ -233,7 +233,9 @@ const progress=()=>pinState().prog;
 // leave, it can fade in exactly where it will sit; when the pin releases it simply scrolls on
 const syncNext=()=>{if(!next||reduce)return;next.classList.add("tk-next");next.style.marginTop=-pin.offsetHeight+"px"};
 const handOff=()=>{if(!next||reduce)return;const {S,raw,prog}=pinState();
-  if(raw>=S){next.style.transform="";next.style.opacity="";next.style.pointerEvents="";headBox.style.opacity="";return}
+  // once the balloons have gone, the (transparent) pinned screen must not swallow clicks meant for the next section
+  pin.style.pointerEvents=prog>=.95?"none":"";
+  if(raw>=S){next.style.transform="";next.style.opacity="";next.style.pointerEvents="";headBox.style.opacity="0";return}
   const q=Math.min(1,Math.max(0,(prog-FADE_IN)/(.97-FADE_IN)));
   next.style.transform=raw>0?`translateY(${(raw-S).toFixed(1)}px)`:"";   // hold it still under the pin
   next.style.opacity=String(q);next.style.pointerEvents=q<1?"none":"";
@@ -284,3 +286,116 @@ legend.forEach(btn=>{const cat=btn.dataset.tkCat;
 // only animate while the section is on screen
 if("IntersectionObserver"in window)new IntersectionObserver(es=>{visible=es[0].isIntersecting;if(visible)kick()}).observe(sec);else visible=!0;
 "ResizeObserver"in window?new ResizeObserver(()=>{layout();syncNext();handOff()}).observe(hive):addEventListener("resize",()=>{layout();syncNext();handOff()});layout();syncNext();handOff();kick()})();
+(()=>{
+// "From the playground" light table: a hand of polaroid prints dealt from the pool of 30 and
+// scattered across a glowing table. Drag a print (it lifts and comes to the front), toss it and it
+// slides with momentum, slowing down and bouncing softly off the edges. Click / Enter opens it large.
+// "deal again" tosses the hand off the table and deals a fresh one.
+const sec=document.querySelector("[data-lighttable]"),table=sec?.querySelector("[data-lt-table]");if(!table)return;
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches,hint=table.querySelector(".lt__hint");
+const NAMES={oldest_portfolio:"early portfolio",portfolio_f:"portfolio",experiments:"experiment"};
+const label=src=>{const m=/\/([a-z_]+)\/([a-z]*?)(\d+)(?:_(\d+))?\.\w+$/.exec(src);if(!m)return"playground";
+  return(NAMES[m[1]]||m[1].replace(/_/g," "))+" · "+(m[2]==="slide"?"slide ":"")+m[3]+(m[4]?"."+m[4]:"")};
+const POOL=sec.dataset.playground.split("|").map(e=>{const[src,dim]=e.split("@"),[w,h]=(dim||"1x1").split("x").map(Number);return{src,w,h,cap:label(src)}});
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),rand=(a,b)=>a+Math.random()*(b-a);
+const easeOutBack=t=>{const c=1.4;return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2)};
+let cards=[],W=0,H=0,L=200,z=1,raf=0,last=0,dealt=!1,held=null;
+
+const size=()=>{W=table.clientWidth;H=table.clientHeight;L=W<640?clamp(W*.3,92,140):clamp(W*.16,112,215)};   // print size (longest side)
+const place=c=>{c.el.style.transform=`translate(${(c.x-c.w/2).toFixed(1)}px,${(c.y-c.h/2).toFixed(1)}px) rotate(${c.r.toFixed(2)}deg)${c===held?.card?" scale(1.04)":""}`};
+
+const makeCard=item=>{
+  const s=L/Math.max(item.w,item.h),iw=Math.round(item.w*s),ih=Math.round(item.h*s);
+  const el=document.createElement("button");el.type="button";el.className="lt__card";el.setAttribute("aria-label","View "+item.cap);
+  const img=document.createElement("img");img.src=item.src;img.alt=item.cap;img.width=iw;img.height=ih;img.draggable=!1;img.decoding="async";
+  img.style.width=iw+"px";img.style.height=ih+"px";
+  const cap=document.createElement("span");cap.className="lt__cap";cap.textContent=item.cap;cap.style.maxWidth=iw+"px";
+  el.append(img,cap);el.style.zIndex=++z;table.appendChild(el);
+  const c={el,item,x:W/2,y:H+200,r:0,vx:0,vy:0,vr:0,w:el.offsetWidth,h:el.offsetHeight,tw:null,dying:!1};
+  bind(c);return c};
+
+// scatter: best-candidate sampling keeps prints spread out without a rigid grid
+const spots=list=>{const out=[];
+  list.forEach(c=>{let best=null,bd=-1;
+    for(let k=0;k<60;k++){const x=rand(c.w/2+12,W-c.w/2-12),y=rand(c.h/2+12,H-c.h/2-30);
+      const d=out.length?Math.min(...out.map(o=>Math.hypot((o.x-x)/W,(o.y-y)/H))):1;if(d>bd){bd=d;best={x,y}}}
+    out.push(best)});return out};
+
+const deal=animate=>{
+  size();const n=W<640?10:16,current=new Set(cards.map(c=>c.item.src));
+  let pick=POOL.filter(p=>!current.has(p.src));if(pick.length<n)pick=POOL.slice();
+  pick=pick.sort(()=>Math.random()-.5).slice(0,n);
+  const fresh=pick.map(makeCard),targets=spots(fresh),now=performance.now();
+  fresh.forEach((c,i)=>{const t=targets[i],r=rand(-11,11);
+    if(!animate||reduce){c.x=t.x;c.y=t.y;c.r=r;place(c);return}
+    c.x=W/2+rand(-40,40);c.y=H+c.h;c.r=rand(-40,40);place(c);
+    c.tw={t0:now+i*85,dur:720,from:{x:c.x,y:c.y,r:c.r},to:{x:t.x,y:t.y,r}}});
+  cards.push(...fresh);dealt=!0;kick()};
+
+const tossAway=()=>{cards.forEach(c=>{if(c.dying)return;const a=Math.atan2(c.y-H/2,c.x-W/2)+rand(-.5,.5),sp=rand(1100,1600);
+  c.dying=!0;c.tw=null;c.vx=Math.cos(a)*sp;c.vy=Math.sin(a)*sp-400;c.vr=rand(-500,500)});kick()};
+
+const step=now=>{raf=0;const dt=Math.min(.05,(now-(last||now))/1000);last=now;let busy=!1;
+  for(const c of cards){
+    if(c.tw){const q=clamp((now-c.tw.t0)/c.tw.dur,0,1),e=easeOutBack(q),f=c.tw.from,t=c.tw.to;
+      c.x=f.x+(t.x-f.x)*e;c.y=f.y+(t.y-f.y)*e;c.r=f.r+(t.r-f.r)*Math.min(1,q*1.2);
+      if(q>=1)c.tw=null;busy=!0;place(c);continue}
+    if(c===held?.card||(Math.abs(c.vx)+Math.abs(c.vy)<4&&Math.abs(c.vr)<2&&!c.dying))continue;
+    c.x+=c.vx*dt;c.y+=c.vy*dt;c.r+=c.vr*dt;
+    if(c.dying){c.el.style.opacity=String(clamp(1-Math.hypot(c.x-W/2,c.y-H/2)/(Math.max(W,H)*.9),0,1))}
+    else{const f=Math.exp(-3.4*dt);c.vx*=f;c.vy*=f;c.vr*=Math.exp(-4.5*dt);
+      // soft bounce off the table edges
+      const hw=c.w/2,hh=c.h/2;
+      if(c.x<hw){c.x=hw;c.vx=Math.abs(c.vx)*.45}else if(c.x>W-hw){c.x=W-hw;c.vx=-Math.abs(c.vx)*.45}
+      if(c.y<hh){c.y=hh;c.vy=Math.abs(c.vy)*.45}else if(c.y>H-hh){c.y=H-hh;c.vy=-Math.abs(c.vy)*.45}}
+    place(c);busy=!0}
+  cards=cards.filter(c=>{if(c.dying&&(c.el.style.opacity==="0"||c.x<-W||c.x>2*W||c.y<-H||c.y>2*H)){c.el.remove();return!1}return!0});
+  if(busy)raf=requestAnimationFrame(step);else last=0};
+const kick=()=>{raf||(raf=requestAnimationFrame(step))};
+
+// drag & toss
+function bind(c){const el=c.el;
+  el.addEventListener("pointerdown",e=>{if(c.dying||e.button>0)return;e.preventDefault();el.setPointerCapture(e.pointerId);
+    const tr=table.getBoundingClientRect();c.tw=null;c.vx=c.vy=c.vr=0;el.style.zIndex=++z;el.classList.add("is-held");
+    held={card:c,id:e.pointerId,ox:e.clientX-tr.left-c.x,oy:e.clientY-tr.top-c.y,sx:e.clientX,sy:e.clientY,t0:performance.now(),lx:e.clientX,ly:e.clientY,lt:performance.now(),vx:0,vy:0,moved:0,r0:c.r};
+    place(c);if(hint)hint.style.opacity="0"});
+  el.addEventListener("pointermove",e=>{if(!held||held.card!==c||e.pointerId!==held.id)return;
+    const tr=table.getBoundingClientRect(),now=performance.now(),dt=Math.max(1,now-held.lt)/1000;
+    const ivx=(e.clientX-held.lx)/dt,ivy=(e.clientY-held.ly)/dt;held.vx=held.vx*.6+ivx*.4;held.vy=held.vy*.6+ivy*.4;
+    held.lx=e.clientX;held.ly=e.clientY;held.lt=now;held.moved=Math.max(held.moved,Math.hypot(e.clientX-held.sx,e.clientY-held.sy));
+    c.x=clamp(e.clientX-tr.left-held.ox,c.w/2*.3,W-c.w/2*.3);c.y=clamp(e.clientY-tr.top-held.oy,c.h/2*.3,H-c.h/2*.3);
+    c.r=held.r0+clamp(held.vx*.006,-14,14);place(c)});
+  const end=e=>{if(!held||held.card!==c||e.pointerId!==held.id)return;const h=held;held=null;el.classList.remove("is-held");
+    if(h.moved<6&&performance.now()-h.t0<450){place(c);open(cards.filter(k=>!k.dying).indexOf(c));return}
+    if(performance.now()-h.lt>90){h.vx=h.vx*.2;h.vy=h.vy*.2}   // paused before letting go → little momentum
+    const sp=Math.hypot(h.vx,h.vy),k=sp>2600?2600/sp:1;c.vx=h.vx*k;c.vy=h.vy*k;
+    c.vr=clamp((h.ox*c.vy-h.oy*c.vx)*.0009,-420,420);if(reduce){c.vx=c.vy=c.vr=0}
+    place(c);kick()};
+  el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
+  el.addEventListener("click",e=>{if(e.detail===0)open(cards.filter(k=>!k.dying).indexOf(c))})}   // keyboard Enter / Space
+
+// full-size viewer
+const box=document.createElement("div");box.className="lt-box";box.hidden=!0;box.setAttribute("role","dialog");box.setAttribute("aria-modal","true");box.setAttribute("aria-label","Playground piece");
+box.innerHTML='<button class="lt-x" type="button" aria-label="Close">close ✕</button><button class="lt-prev" type="button" aria-label="Previous">‹</button><figure><img alt=""><figcaption></figcaption></figure><button class="lt-next" type="button" aria-label="Next">›</button>';
+document.body.appendChild(box);
+const bImg=box.querySelector("img"),bCap=box.querySelector("figcaption");let at=-1,opener=null,openedAt=0;
+const show=i=>{const live=cards.filter(k=>!k.dying);if(!live.length)return;at=(i+live.length)%live.length;const it=live[at].item;bImg.src=it.src;bImg.alt=it.cap;bCap.textContent=`${it.cap} — ${at+1} / ${live.length}`};
+function open(i){if(i<0)return;openedAt=performance.now();opener=document.activeElement;show(i);box.hidden=!1;requestAnimationFrame(()=>box.classList.add("is-open"));document.documentElement.style.overflow="hidden";box.querySelector(".lt-x").focus()}
+const close=()=>{box.classList.remove("is-open");document.documentElement.style.overflow="";setTimeout(()=>{box.hidden=!0},250);opener?.focus?.()};
+box.querySelector(".lt-x").addEventListener("click",close);
+box.querySelector(".lt-prev").addEventListener("click",()=>show(at-1));box.querySelector(".lt-next").addEventListener("click",()=>show(at+1));
+// (a tap opens on finger-up; ignore the click that follows it landing on the backdrop)
+box.addEventListener("click",e=>{if(e.target===box&&performance.now()-openedAt>400)close()});
+addEventListener("keydown",e=>{if(box.hidden)return;if(e.key==="Escape")close();else if(e.key==="ArrowLeft")show(at-1);else if(e.key==="ArrowRight")show(at+1)});
+
+sec.querySelector("[data-lt-deal]").addEventListener("click",()=>{if(!dealt)return deal(!0);tossAway();setTimeout(()=>deal(!0),reduce?0:320)});
+
+// keep prints on the table when it resizes
+new ResizeObserver(()=>{const ow=W,oh=H;size();if(!dealt||!ow)return;
+  cards.forEach(c=>{c.x=clamp(c.x*W/ow,c.w/2,W-c.w/2);c.y=clamp(c.y*H/oh,c.h/2,H-c.h/2);place(c)})}).observe(table);
+
+// first deal: when the table is on screen and fully visible (it fades in after the toolkit balloons)
+size();
+if(reduce)deal(!1);
+else{const io=new IntersectionObserver(es=>{if(!es[0].isIntersecting||dealt)return;io.disconnect();
+  const wait=()=>{if(dealt)return;if(parseFloat(getComputedStyle(sec).opacity)>=.95)deal(!0);else requestAnimationFrame(wait)};wait()},{threshold:.35});io.observe(table)}})();
