@@ -398,7 +398,7 @@ const box=document.createElement("div");box.className="lt-box";box.hidden=!0;box
 box.innerHTML='<button class="lt-x" type="button" aria-label="Close">close ✕</button><button class="lt-prev" type="button" aria-label="Previous">‹</button><figure><img alt=""><figcaption></figcaption></figure><button class="lt-next" type="button" aria-label="Next">›</button>';
 document.body.appendChild(box);
 const bImg=box.querySelector("img"),bCap=box.querySelector("figcaption");let at=-1,opener=null,openedAt=0;
-const show=i=>{const live=cards.filter(k=>!k.dying);if(!live.length)return;at=(i+live.length)%live.length;const it=live[at].item;bImg.src=it.src;bImg.alt=it.cap;bCap.textContent=`${it.cap} — ${at+1} / ${live.length}`};
+const show=i=>{const live=cards.filter(k=>!k.dying);if(!live.length)return;at=(i+live.length)%live.length;const it=live[at].item;bImg.src=it.src;bImg.alt=it.cap;bCap.textContent=`${it.cap}; ${at+1} / ${live.length}`};
 function open(i){if(i<0)return;openedAt=performance.now();opener=document.activeElement;show(i);box.hidden=!1;requestAnimationFrame(()=>box.classList.add("is-open"));document.documentElement.style.overflow="hidden";box.querySelector(".lt-x").focus()}
 const close=()=>{box.classList.remove("is-open");document.documentElement.style.overflow="";setTimeout(()=>{box.hidden=!0},250);opener?.focus?.()};
 box.querySelector(".lt-x").addEventListener("click",close);

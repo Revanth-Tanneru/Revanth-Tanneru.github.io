@@ -906,14 +906,14 @@ let onScreen = true, hiddenByHost = false;   // host page can hide us (e.g. home
 // why the camera can't start, in words a visitor can act on
 function cameraProblem(err) {
   if (!window.isSecureContext)
-    return `Live camera needs a secure page (https:// or localhost) — this is ${location.origin}. Try a sample or upload a photo.`;
+    return `Live camera needs a secure page (https:// or localhost); this is ${location.origin}. Try a sample or upload a photo.`;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
-    return 'This browser (or embedded preview) has no camera access — open the page in Chrome, Safari or Firefox.';
+    return 'This browser (or embedded preview) has no camera access; open the page in Chrome, Safari or Firefox.';
   const name = err && err.name;
   if (name === 'NotAllowedError' || name === 'SecurityError')
-    return 'Camera permission denied — allow it from the camera icon in the address bar. On a Mac, also check System Settings › Privacy & Security › Camera for your browser.';
-  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No camera found on this device — try a sample or upload a photo.';
-  if (name === 'NotReadableError' || name === 'AbortError') return 'The camera is busy (another app or tab may be using it) — close it and try again.';
+    return 'Camera permission denied; allow it from the camera icon in the address bar. On a Mac, also check System Settings › Privacy & Security › Camera for your browser.';
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No camera found on this device; try a sample or upload a photo.';
+  if (name === 'NotReadableError' || name === 'AbortError') return 'The camera is busy (another app or tab may be using it); close it and try again.';
   return `Camera failed (${name || 'unknown error'}${err && err.message ? ': ' + err.message : ''}).`;
 }
 
@@ -922,7 +922,7 @@ async function openStream() {
   try {
     stream = await md.getUserMedia({audio: false, video: {facingMode: facing, width: {ideal: 640}, height: {ideal: 480}}});
   } catch (err) {
-    // some devices reject the preferred size/facing — retry with "any camera"
+    // some devices reject the preferred size/facing; retry with "any camera"
     if (err.name !== 'OverconstrainedError' && err.name !== 'NotReadableError' && err.name !== 'TypeError') throw err;
     stream = await md.getUserMedia({audio: false, video: true});
   }
@@ -946,11 +946,11 @@ async function startCamera() {
     setStatus('Asking for camera… (check for a permission prompt)');
     await openStream();
     gotFrame = false;
-    setTimeout(() => { if (live && !frozen && !gotFrame) setStatus('Camera is on but no picture is arriving — try Stop camera, then Live camera again, or another browser.'); }, 4000);
+    setTimeout(() => { if (live && !frozen && !gotFrame) setStatus('Camera is on but no picture is arriving; try Stop camera, then Live camera again, or another browser.'); }, 4000);
     live = true; frozen = false;
     camBtn.textContent = '■ Stop camera'; camBtn.setAttribute('aria-pressed', 'true');
     snapBtn.disabled = false; snapBtn.textContent = '⏸ Freeze frame';
-    markSource(null); setStatus('Live — camera frames are processed on your device, nothing is uploaded.');
+    markSource(null); setStatus('Live; camera frames are processed on your device, nothing is uploaded.');
     navigator.mediaDevices.enumerateDevices().then(ds => { flipBtn.hidden = ds.filter(d => d.kind === 'videoinput').length < 2; }).catch(() => {});
     cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
   } catch (err) {
@@ -976,7 +976,7 @@ flipBtn.addEventListener('click', async () => {
 snapBtn.addEventListener('click', () => {
   frozen = !frozen;
   snapBtn.textContent = frozen ? '▶ Resume live' : '⏸ Freeze frame';
-  setStatus(frozen ? 'Frozen — tweak the effect, or save the print.' : 'Live.');
+  setStatus(frozen ? 'Frozen; tweak the effect, or save the print.' : 'Live.');
   if (frozen) render();
 });
 
