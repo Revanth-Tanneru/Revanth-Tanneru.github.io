@@ -14,6 +14,7 @@ const stage=document.querySelector("[data-intro-stage]"),copy=stage?.querySelect
 if(!stage||!copy||!demo)return;
 const SRC="/decahedron-net-designer.html?demo",reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 const box=stage.querySelector(".introswap"),orb=stage.querySelector("[data-orb]"),slot=stage.querySelector("[data-orb-slot]"),target=stage.querySelector("[data-orb-target]"),unfold=stage.querySelector("[data-intro-unfold]"),title=stage.querySelector("[data-scramble]"),label=stage.querySelector("[data-orb-label]");
+const lmField=stage.querySelector("[data-lm]");
 const cam=stage.querySelector("[data-intro-cam]"),camFrame=cam?.querySelector("iframe"),camTitle=cam?.querySelector("[data-bit-scramble]"),dither=stage.querySelector("[data-intro-dither]");
 const clamp=v=>Math.min(1,Math.max(0,v)),ease=v=>v<.5?4*v*v*v:1-Math.pow(-2*v+2,3)/2,lerp=(a,b,t)=>a+(b-a)*t;
 const rel=el=>{const r=el.getBoundingClientRect(),b=box.getBoundingClientRect();return{x:r.left-b.left+r.width/2,y:r.top-b.top+r.height/2,w:r.width,h:r.height}};
@@ -82,7 +83,7 @@ if(phase!==goal&&!raf){animT=0;raf=requestAnimationFrame(step)}
 const swapped=phase>=.5;
 demoVisible(!swapped&&p>.35);
 // scene 1: intro copy slides up and away
-const f=clamp(p/.28);shift=-f*80;copy.style.opacity=String(1-f);copy.style.transform=`translateY(${shift.toFixed(1)}px)`;
+const f=clamp(p/.28);shift=-f*80;copy.style.opacity=String(1-f);if(lmField){lmField.style.opacity=String(1-f);lmField.style.visibility=f>=1?"hidden":"";lmField.style.translate=`0 ${(shift*1.4).toFixed(1)}px`}copy.style.transform=`translateY(${shift.toFixed(1)}px)`;
 // scene 2: heading + chrome fade in, heading decodes; hidden once the dither has swapped
 const u=swapped?0:clamp((p-.3)/.15);demo.style.opacity=String(u);demo.style.visibility=swapped?"hidden":"";scramble(clamp((p-.32)/.3));
 p>.08&&load();
@@ -442,3 +443,40 @@ if(matchMedia("(hover: hover) and (pointer: fine)").matches){
 const f=document.querySelector(".site-foot--finale");if(!f)return;
 const set=()=>document.documentElement.style.setProperty("--foot-h",f.offsetHeight+"px");
 "ResizeObserver"in window?new ResizeObserver(set).observe(f):addEventListener("resize",set);set()})();
+(()=>{
+// A moth on the light table: drawn to the light, it loops around the bright centre, lands on the
+// table now and then and slowly fans its wings, and darts off when the cursor comes close.
+const table=document.querySelector("[data-lt-table]");if(!table)return;
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const NS="http://www.w3.org/2000/svg";
+const m=document.createElement("div");m.className="lt__moth";m.setAttribute("aria-hidden","true");
+m.innerHTML=`<svg viewBox="0 0 100 100" width="68" height="68"><g transform="translate(50 50)"><g class="mw mw-l"><path class="mh" d="M-3 0C-15 2-28 8-29 17-28 25-15 24-3 10Z"/><path class="mf" d="M-2-9C-14-18-32-24-46-21-44-11-40-2-34 6-24 5-12 4-3 2Z"/><path class="mp" d="M-10-12L-14-6-11-1-14 3M-27-17L-31-10-26-6-30 2M-38-19L-41-12-37-5"/><circle class="md" cx="-20" cy="-8" r="1.8"/></g><g class="mw mw-r"><g transform="scale(-1 1)"><path class="mh" d="M-3 0C-15 2-28 8-29 17-28 25-15 24-3 10Z"/><path class="mf" d="M-2-9C-14-18-32-24-46-21-44-11-40-2-34 6-24 5-12 4-3 2Z"/><path class="mp" d="M-10-12L-14-6-11-1-14 3M-27-17L-31-10-26-6-30 2M-38-19L-41-12-37-5"/><circle class="md" cx="-20" cy="-8" r="1.8"/></g></g><ellipse class="mb" cx="0" cy="5" rx="5" ry="13"/><path class="ms" d="M-4 4h8M-4.6 8h9.2M-4.2 12h8.4M-3.4 16h6.8"/><circle class="mt" cx="0" cy="-8" r="6"/><circle class="mb" cx="0" cy="-15" r="3.6"/><path class="ma" d="M-2 -16Q-6 -27 -15 -32M2 -16Q6 -27 15 -32"/><path class="mc" d="M-3.5 -19.5l1.4 -2.2M-3.5 -19.5l-2.6 -0.3M-4.3 -21.1l1.8 -2.6M-4.3 -21.1l-3.2 0.2M-5.2 -22.7l2.1 -3.0M-5.2 -22.7l-3.6 0.6M-6.2 -24.1l2.2 -3.3M-6.2 -24.1l-3.8 1.0M-7.2 -25.5l2.1 -3.5M-7.2 -25.5l-3.8 1.3M-8.4 -26.8l1.8 -3.5M-8.4 -26.8l-3.7 1.5M-9.6 -28.0l1.3 -3.4M-9.6 -28.0l-3.3 1.5M-10.8 -29.1l0.8 -3.1M-10.8 -29.1l-2.9 1.3M-12.1 -30.2l0.2 -2.6M-12.1 -30.2l-2.4 0.9M-13.5 -31.1l-0.4 -2.0M-13.5 -31.1l-1.9 0.4M3.5 -19.5l2.6 -0.3M3.5 -19.5l-1.4 -2.2M4.3 -21.1l3.2 0.2M4.3 -21.1l-1.8 -2.6M5.2 -22.7l3.6 0.6M5.2 -22.7l-2.1 -3.0M6.2 -24.1l3.8 1.0M6.2 -24.1l-2.2 -3.3M7.2 -25.5l3.8 1.3M7.2 -25.5l-2.1 -3.5M8.4 -26.8l3.7 1.5M8.4 -26.8l-1.8 -3.5M9.6 -28.0l3.3 1.5M9.6 -28.0l-1.3 -3.4M10.8 -29.1l2.9 1.3M10.8 -29.1l-0.8 -3.1M12.1 -30.2l2.4 0.9M12.1 -30.2l-0.2 -2.6M13.5 -31.1l1.9 0.4M13.5 -31.1l0.4 -2.0"/></g></svg>`;
+table.appendChild(m);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),rand=(a,b)=>a+Math.random()*(b-a);
+let W=0,H=0,x=0,y=0,vx=0,vy=0,ang=0,mode="fly",timer=0,tx=0,ty=0,px=-1e4,py=-1e4,last=0,raf=0,on=!1,t0=performance.now();
+const size=()=>{W=table.clientWidth;H=table.clientHeight};size();new ResizeObserver(size).observe(table);
+x=W*.5;y=H*.45;
+const land=()=>{mode="rest";timer=rand(2.2,5);vx=vy=0;m.classList.add("is-rest")};
+const takeOff=()=>{mode="fly";timer=rand(5,11);m.classList.remove("is-rest")};
+takeOff();
+table.addEventListener("pointermove",e=>{const r=table.getBoundingClientRect();px=e.clientX-r.left;py=e.clientY-r.top});
+table.addEventListener("pointerleave",()=>{px=py=-1e4});
+const draw=()=>{m.style.transform=`translate(${(x-34).toFixed(1)}px,${(y-34).toFixed(1)}px) rotate(${ang.toFixed(1)}deg)`};
+if(reduce){x=W*.62;y=H*.32;ang=-18;m.classList.add("is-rest");draw();return}
+const step=now=>{raf=on?requestAnimationFrame(step):0;const dt=Math.min(.05,(now-(last||now))/1000);last=now;const t=(now-t0)/1000;
+  const dpx=x-px,dpy=y-py,dist=Math.hypot(dpx,dpy);
+  if(dist<110){ // startled: dart away from the cursor
+    if(mode==="rest")takeOff();const k=900/(dist+20);vx+=dpx/dist*k*dt*60;vy+=dpy/dist*k*dt*60}
+  if(mode==="fly"){timer-=dt;
+    // drawn to the light: loop around the bright centre with a wobble, plus jitter
+    const cx=W*.5+Math.cos(t*.7)*W*.26+Math.sin(t*1.9)*W*.06,cy=H*.46+Math.sin(t*1.1)*H*.24+Math.cos(t*2.3)*H*.05;
+    vx+=(cx-x)*1.6*dt+rand(-1,1)*260*dt;vy+=(cy-y)*1.6*dt+rand(-1,1)*260*dt;
+    const sp=Math.hypot(vx,vy),max=dist<110?620:240;if(sp>max){vx*=max/sp;vy*=max/sp}
+    vx*=Math.exp(-1.2*dt);vy*=Math.exp(-1.2*dt);
+    x+=vx*dt;y+=vy*dt;
+    if(x<24||x>W-24){vx*=-.6;x=clamp(x,24,W-24)}if(y<24||y>H-24){vy*=-.6;y=clamp(y,24,H-24)}
+    const want=Math.atan2(vy,vx)*180/Math.PI+90;let d=((want-ang+540)%360)-180;ang+=d*Math.min(1,dt*6);
+    if(timer<=0&&dist>160)land()}
+  else{timer-=dt;ang+=Math.sin(t*.8)*.05;if(timer<=0)takeOff()}
+  draw()};
+new IntersectionObserver(es=>{on=es[0].isIntersecting;if(on&&!raf){last=0;raf=requestAnimationFrame(step)}}).observe(table)})();
