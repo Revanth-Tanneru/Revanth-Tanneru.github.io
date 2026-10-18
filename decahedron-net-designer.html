@@ -124,4 +124,24 @@ $('prt').onclick=()=>window.print();
 $('code').onclick=()=>{const t=$('ta');t.style.display=t.style.display==='block'?'none':'block';if(t.style.display==='block')t.select()};
 ed.classList.add('hint');
 render();
+/* demo mode (?demo, used by the home page): the dots move by themselves until someone takes over.
+   The host page tells us when we're on screen ({type:'deca-demo',visible}) and when to stop ({stop:true}). */
+if(/[?&]demo\b/.test(location.search)){
+ let on=true,visible=true,last=0,t0=performance.now();const base=DEF(),hint=$('hint');
+ const warn=$('warn');if(hint)hint.style.display='none';ed.classList.remove('hint');if(warn)warn.style.visibility='hidden';
+ const tick=now=>{if(!on)return;requestAnimationFrame(tick);if(!visible||now-last<50)return;last=now;
+  // gentle sway around the default fish (the self-crossing check is too strict to steer by)
+  const t=(now-t0)/1000;
+  S.A=base.A.map((q,i)=>[q[0],q[1]+.12*Math.sin(t*.9+i*1.7)]);
+  S.B=base.B.map((q,i)=>[q[0],q[1]+.1*Math.sin(t*.7+i*2.1+1)]);
+  render()};
+ requestAnimationFrame(tick);
+ const stop=()=>{if(!on)return;on=false;if(warn)warn.style.visibility='';if(hint&&hint.isConnected){hint.style.display='';ed.classList.add('hint')}
+  try{parent.postMessage({type:'deca-demo-stopped'},location.origin)}catch(e){}};
+ ed.addEventListener('pointerdown',stop,true);
+ document.querySelectorAll('button,input,select,textarea').forEach(el=>el.addEventListener('pointerdown',stop,true));
+ addEventListener('keydown',stop,true);
+ addEventListener('message',e=>{if(e.origin!==location.origin||!e.data||e.data.type!=='deca-demo')return;
+  if(e.data.stop)stop();if('visible'in e.data)visible=!!e.data.visible});
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches)stop()}
 </script></body></html>

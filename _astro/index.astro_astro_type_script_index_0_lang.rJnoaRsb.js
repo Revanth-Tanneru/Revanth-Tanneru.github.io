@@ -6,13 +6,13 @@ const set=()=>document.documentElement.style.setProperty("--head-h",h.offsetHeig
 (()=>{const i=document.querySelector("[data-hero-canvas]"),t=i?.getContext("2d");if(!i||!t)return;const l=matchMedia("(prefers-reduced-motion: reduce)").matches,r=(1+Math.sqrt(5))/2,s=1/r,d=[[1,1,1],[1,1,-1],[1,-1,1],[1,-1,-1],[-1,1,1],[-1,1,-1],[-1,-1,1],[-1,-1,-1],[0,s,r],[0,s,-r],[0,-s,r],[0,-s,-r],[s,r,0],[s,-r,0],[-s,r,0],[-s,-r,0],[r,0,s],[r,0,-s],[-r,0,s],[-r,0,-s]],g=2*s,o=[];for(let e=0;e<d.length;e++)for(let p=e+1;p<d.length;p++){const M=Math.hypot(d[e][0]-d[p][0],d[e][1]-d[p][1],d[e][2]-d[p][2]);Math.abs(M-g)<.05&&o.push([e,p])}let a=-.42,n=.62,v=-.42,c=.62;l||addEventListener("pointermove",e=>{c=.62+(e.clientX/innerWidth-.5)*1.6,v=-.42+(e.clientY/innerHeight-.5)*1.1},{passive:!0});let h=0,f=0,u=1;const I=()=>{h=i.clientWidth,f=i.clientHeight,u=Math.min(2,window.devicePixelRatio||1),i.width=Math.max(1,Math.round(h*u)),i.height=Math.max(1,Math.round(f*u))};"ResizeObserver"in window?new ResizeObserver(I).observe(i):addEventListener("resize",I),I();const L=e=>{const p=Math.cos(n),M=Math.sin(n),E=e[0]*p+e[2]*M,y=-e[0]*M+e[2]*p,S=Math.cos(a),w=Math.sin(a);return[E,e[1]*S-y*w,e[1]*w+y*S]},b=performance.now(),m=e=>{const p=(e-b)/1e3;l||(a+=(v-a)*.05,n+=(c+p*.22-n)*.05),t.setTransform(u,0,0,u,0,0),t.clearRect(0,0,h,f);const M=h/2,E=f/2,y=Math.min(h,f)*.25,S=d.map(L);let w=1/0,z=-1/0;for(const x of S)x[2]<w&&(w=x[2]),x[2]>z&&(z=x[2]);const k=z-w||1;t.strokeStyle="rgba(14,27,48,0.16)",t.lineWidth=1,t.setLineDash([4,7]),t.beginPath(),t.arc(M,E,y*1.6,0,Math.PI*2),t.stroke(),t.setLineDash([]);for(const[x,q]of o){const O=S[x],P=S[q],A=((O[2]+P[2])/2-w)/k;t.strokeStyle=`rgba(43,92,255,${(.12+A*.82).toFixed(3)})`,t.lineWidth=.7+A*1.7,t.beginPath(),t.moveTo(M+O[0]*y,E-O[1]*y),t.lineTo(M+P[0]*y,E-P[1]*y),t.stroke()}for(const x of S){const q=(x[2]-w)/k;t.fillStyle=q>.5?"rgba(14,27,48,0.9)":"rgba(14,27,48,0.3)",t.beginPath(),t.arc(M+x[0]*y,E-x[1]*y,1.1+q*2.3,0,Math.PI*2),t.fill()}l||requestAnimationFrame(m)};requestAnimationFrame(m)})();(()=>{
 // Pinned intro stage, driven by scroll distance (in viewport heights):
 //   0 – 2.0   hero copy → decahedron flies → net designer unfolds (scene 1 → 2), scrubbed by scroll
-//   2.2       trigger: the screen dithers into ink + 0/1s, swaps, dithers back out (scene 2 → 3).
+//   2.85      trigger: the screen dithers into ink + 0/1s, swaps, dithers back out (scene 2 → 3).
 //             This plays on a timer (DUR ms) rather than following the scroll, so it always
 //             finishes on a clean frame; scrolling back above the trigger plays it in reverse.
-//   2.2 – 2.9 hold on the 1 bit camera, then the page scrolls on
+//   2.85 – 3.5 hold on the 1 bit camera, then the page scrolls on
 const stage=document.querySelector("[data-intro-stage]"),copy=stage?.querySelector("[data-intro-copy]"),demo=stage?.querySelector("[data-intro-demo]"),frame=stage?.querySelector("[data-intro-frame]");
 if(!stage||!copy||!demo)return;
-const SRC="/decahedron-net-designer.html",reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SRC="/decahedron-net-designer.html?demo",reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 const box=stage.querySelector(".introswap"),orb=stage.querySelector("[data-orb]"),slot=stage.querySelector("[data-orb-slot]"),target=stage.querySelector("[data-orb-target]"),unfold=stage.querySelector("[data-intro-unfold]"),title=stage.querySelector("[data-scramble]"),label=stage.querySelector("[data-orb-label]");
 const cam=stage.querySelector("[data-intro-cam]"),camFrame=cam?.querySelector("iframe"),camTitle=cam?.querySelector("[data-bit-scramble]"),dither=stage.querySelector("[data-intro-dither]");
 const clamp=v=>Math.min(1,Math.max(0,v)),ease=v=>v<.5?4*v*v*v:1-Math.pow(-2*v+2,3)/2,lerp=(a,b,t)=>a+(b-a)*t;
@@ -31,7 +31,15 @@ try{camFrame?.contentWindow?.postMessage({type:"1bit-visibility",visible:on},loc
 camFrame?.addEventListener("load",()=>{const v=camShown;camShown=null;showCam(!!v)});
 let loaded=!1,queued=!1,shift=0;
 const load=()=>{!loaded&&frame&&(loaded=!0,frame.setAttribute("src",SRC))};
-if(reduce){load();demo.style.opacity="1";demo.style.pointerEvents="auto";label&&(label.style.opacity="1");showCam(!0);
+// the designer plays itself as a demo behind a "take control" shield; the shield also keeps the
+// mouse wheel scrolling the page (not the designer) until someone chooses to use it
+const shield=stage.querySelector("[data-demo-shield]");let demoVis=null,taken=!1;
+const tellDemo=msg=>{try{frame?.contentWindow?.postMessage({type:"deca-demo",...msg},location.origin)}catch{}};
+const demoVisible=v=>{if(v===demoVis)return;demoVis=v;tellDemo({visible:v});
+  if(!v&&shield&&taken){shield.classList.remove("is-off");shield.querySelector(".demo-shield__pill").lastChild.textContent="tap to use the designer"}};
+frame?.addEventListener("load",()=>{const v=demoVis;demoVis=null;demoVisible(!!v)});
+shield?.addEventListener("click",()=>{taken=!0;shield.classList.add("is-off");tellDemo({stop:!0});frame?.focus()});
+if(reduce){load();shield?.remove();demo.style.opacity="1";demo.style.pointerEvents="auto";label&&(label.style.opacity="1");showCam(!0);
 const still=()=>{if(!flying())return;const a=rel(slot);placeOrb(a.x,a.y,a.w/orb.offsetWidth)};
 addEventListener("resize",still,{passive:!0});still();return}
 
@@ -61,7 +69,7 @@ for(let k=0;k<inkR.length;k+=2){const i=inkR[k];dctx.drawImage(sprites[2+(inkR[k
 "ResizeObserver"in window&&dither?new ResizeObserver(()=>{sizeDither();req()}).observe(dither):addEventListener("resize",sizeDither);
 sizeDither();document.fonts?.ready.then(()=>{sizeDither();req()});
 
-const DUR=700,TRIG_IN=2.25,TRIG_OUT=2.15;   // swap duration (ms); trigger points with a little hysteresis
+const DUR=700,TRIG_IN=2.85,TRIG_OUT=2.75;   // swap duration (ms); trigger points with a little hysteresis
 let raf=0,phase=0,goal=0,animT=0;            // phase 0 = designer, 1 = camera
 const step=now=>{const dt=Math.min(64,now-(animT||now));animT=now;
 phase=goal>phase?Math.min(goal,phase+dt/DUR):Math.max(goal,phase-dt/DUR);render();
@@ -72,6 +80,7 @@ const p=clamp(s/(2*vh));     // scene 1→2 progress
 if(s>TRIG_IN*vh)goal=1;else if(s<TRIG_OUT*vh)goal=0;
 if(phase!==goal&&!raf){animT=0;raf=requestAnimationFrame(step)}
 const swapped=phase>=.5;
+demoVisible(!swapped&&p>.35);
 // scene 1: intro copy slides up and away
 const f=clamp(p/.28);shift=-f*80;copy.style.opacity=String(1-f);copy.style.transform=`translateY(${shift.toFixed(1)}px)`;
 // scene 2: heading + chrome fade in, heading decodes; hidden once the dither has swapped
@@ -399,3 +408,9 @@ size();
 if(reduce)deal(!1);
 else{const io=new IntersectionObserver(es=>{if(!es[0].isIntersecting||dealt)return;io.disconnect();
   const wait=()=>{if(dealt)return;if(parseFloat(getComputedStyle(sec).opacity)>=.95)deal(!0);else requestAnimationFrame(wait)};wait()},{threshold:.35});io.observe(table)}})();
+(()=>{
+// home finale: "before you ask" + "say hello" + the footer share exactly one screen,
+// so publish the footer's real height for the finale's min-height
+const f=document.querySelector(".site-foot--finale");if(!f)return;
+const set=()=>document.documentElement.style.setProperty("--foot-h",f.offsetHeight+"px");
+"ResizeObserver"in window?new ResizeObserver(set).observe(f):addEventListener("resize",set);set()})();
