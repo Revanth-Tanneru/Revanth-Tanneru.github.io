@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>1 Bit Camera simulator</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--bg:#eef1f6;--fg:#0e1b30;--mut:#45526c;--card:#e3e8f0;--acc:#0bb3a0;--line:#c9d1de;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1b30;--fg:#eef1f6;--mut:#7d89a3;--card:#16233b;--acc:#2fd3bf;--line:#26334d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1b30;--fg:#eef1f6;--mut:#7d89a3;--card:#16233b;--acc:#2fd3bf;--line:#26334d;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0}body{background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif;padding:12px;max-width:1100px;margin:auto}
+h1{font-size:20px;margin:4px 0}h2{font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}p{color:var(--mut);margin:4px 0 10px}
+button,.btn,select{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:inherit;font-size:14px;cursor:pointer}
+button:hover,.btn:hover{border-color:var(--acc)}button:disabled{opacity:.45;cursor:default}
+.pri{background:var(--acc);border-color:var(--acc);color:#04201c;font-weight:600}
+.src{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.samples{display:flex;flex-wrap:wrap;gap:6px}
+.sample{padding:0;width:52px;height:52px;overflow:hidden;border-radius:8px;position:relative}
+.sample img,.sample canvas{width:100%;height:100%;object-fit:cover;display:block}
+.sample[aria-pressed="true"],#camBtn[aria-pressed="true"]{outline:2px solid var(--acc);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.view{flex:1 1 360px;min-width:0;position:relative}
+.paper{background:#fff;border-radius:6px;padding:14px 14px 18px;box-shadow:0 1px 0 var(--line),0 8px 24px rgba(0,0,0,.12);display:flex;justify-content:center;min-height:200px;align-items:center}
+#out{display:block;width:100%;max-width:576px;height:auto;image-rendering:pixelated;touch-action:none}
+#inp{position:absolute;right:10px;bottom:12px;width:min(28%,150px);height:auto;border:2px solid #fff;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.25);background:#000}
+.drop .paper{outline:2px dashed var(--acc);outline-offset:4px}
+.ctl{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;color:var(--mut);display:flex;justify-content:space-between}
+.field label b{color:var(--fg);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.field.off{opacity:.4}
+.toggles{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+.toggles input{accent-color:var(--acc)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+#status{min-height:1.4em}
+#stats{color:var(--mut)}
+</style></head>
+<body>
+<h1>1 Bit Camera simulator</h1>
+<p>Each frame is turned to greyscale, scaled to the printer&rsquo;s 384 dots and run through the same effect code as the camera firmware. Pick a source, then an effect.</p>
+
+<div class="src">
+  <button id="camBtn" class="pri" type="button">&#9679; Live camera</button>
+  <button id="flipBtn" type="button" hidden>&#8634; Flip</button>
+  <label class="btn" for="file">&#8679; Upload photo</label>
+  <input id="file" type="file" accept="image/*" hidden>
+  <div class="samples" role="group" aria-label="Sample images">
+    <button class="sample" type="button" data-sample="testcard" title="Test card" aria-label="Test card"><canvas id="tcThumb" width="52" height="52"></canvas></button>
+    <button class="sample" type="button" data-sample="portrait" title="Portrait" aria-label="Portrait sample"><img src="/img/1bit-camera/samples/portrait-thumb.jpg" alt=""></button>
+    <button class="sample" type="button" data-sample="workshop" title="Workshop" aria-label="Workshop sample"><img src="/img/1bit-camera/samples/workshop-thumb.jpg" alt=""></button>
+    <button class="sample" type="button" data-sample="group" title="Group" aria-label="Group sample"><img src="/img/1bit-camera/samples/group-thumb.jpg" alt=""></button>
+    <button class="sample" type="button" data-sample="concept" title="Camera concept" aria-label="Camera concept sample"><img src="/img/1bit-camera/samples/concept-thumb.jpg" alt=""></button>
+  </div>
+</div>
+<p id="status" class="mono" role="status"></p>
+
+<div class="row">
+  <div class="view" id="view">
+    <div class="paper"><canvas id="out" aria-label="Simulated thermal print"></canvas></div>
+    <canvas id="inp" aria-hidden="true"></canvas>
+  </div>
+  <div class="ctl">
+    <div class="field"><label for="fx">Effect</label><select id="fx"></select></div>
+    <div class="field" id="fThresh"><label for="thresh">Threshold / gamma <b id="threshV">128</b></label><input id="thresh" type="range" min="0" max="255" value="128"></div>
+    <div class="field" id="fDot"><label for="dot">Dot size <b id="dotV">2</b></label><input id="dot" type="range" min="1" max="16" value="2"></div>
+    <div class="field" id="fLevels"><label for="levels">Levels <b id="levelsV">3</b></label><input id="levels" type="range" min="2" max="6" value="3"></div>
+    <div class="toggles">
+      <label><input id="invert" type="checkbox"> Invert</label>
+      <label><input id="preproc" type="checkbox" checked> Pre-process</label>
+    </div>
+    <div class="actions">
+      <button id="snapBtn" type="button" disabled>&#9208; Freeze frame</button>
+      <button id="saveBtn" type="button">&#8681; Save PNG</button>
+    </div>
+    <p id="stats" class="mono"></p>
+  </div>
+</div>
+<script>
+// ── Effects engine: ported from the firmware (main/effects.c), same as /1bit-camera/sim/ ──
+// ── Effect names (matches firmware FX enum order) ──────────
+const FX = [
+  {id:0, name:'fs',           label:'FS dither'},
+  {id:1, name:'atkinson',     label:'Atkinson'},
+  {id:2, name:'jarvis',       label:'Jarvis'},
+  {id:3, name:'stucki',       label:'Stucki'},
+  {id:4, name:'bayer2',       label:'Bayer 2x2'},
+  {id:5, name:'bayer4',       label:'Bayer 4x4'},
+  {id:6, name:'bayer8',       label:'Bayer 8x8'},
+  {id:7, name:'random',       label:'Random dither'},
+  {id:8, name:'threshold',    label:'Threshold'},
+  {id:9, name:'halftone',     label:'Halftone'},
+  {id:10,name:'line',         label:'Line halftone'},
+  {id:11,name:'crosshatch',   label:'Crosshatch'},
+  {id:12,name:'pixelate',     label:'Pixelate'},
+  {id:13,name:'ascii',        label:'ASCII art'},
+  {id:14,name:'binary',       label:'Binary art'},
+  {id:15,name:'comic',        label:'Comic'},
+  {id:16,name:'silhouette',   label:'Silhouette'},
+  {id:17,name:'blocks',       label:'Blocks'},
+];
+const FX_ASCII = 13, FX_BINARY = 14;
+
+// Effects that use p_dot internally (skip pixel replication)
+const FX_INTERNAL_DOT = new Set([12, 15, 17]);
+
+// ── Generate test card ────────────────────────────────────
+function genTestcard(w, h) {
+  const data = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const fx = x / w, fy = y / h;
+      const cx = fx - 0.5, cy = fy - 0.5;
+      const rad = Math.sqrt(cx*cx + cy*cy);
+      const ang = Math.atan2(cy, cx);
+      let v;
+      if (rad < 0.05) v = 255;
+      else if (rad < 0.1) v = 0;
+      else if (rad < 0.25) v = (Math.sin(ang * 4) * 0.5 + 0.5) * 255;
+      else if (rad < 0.35) v = fx * 255;
+      else v = fy * 255;
+      if (Math.abs(cx + 0.15) < 0.04 && Math.abs(cy + 0.15) < 0.04) v = 0;
+      if (Math.abs(cx - 0.15) < 0.04 && Math.abs(cy + 0.15) < 0.04) v = 0;
+      if (Math.abs(cy - 0.15) < 0.03 && Math.abs(cx) < 0.08) v = 0;
+      data[y * w + x] = Math.max(0, Math.min(255, Math.round(v)));
+    }
+  return data;
+}
+
+// ── Effects implementation (ported from effects.c) ─────────
+
+// Bilinear resize
+function greyResize(src, sw, sh, dw, dh) {
+  const dst = new Uint8Array(dw * dh);
+  for (let dy = 0; dy < dh; dy++) {
+    const syf = (dy + 0.5) * sh / dh - 0.5;
+    const sy = Math.max(0, Math.min(sh - 2, Math.floor(syf)));
+    const fy = syf - sy;
+    for (let dx = 0; dx < dw; dx++) {
+      const sxf = (dx + 0.5) * sw / dw - 0.5;
+      const sx = Math.max(0, Math.min(sw - 2, Math.floor(sxf)));
+      const fx = sxf - sx;
+      const v00 = src[sy * sw + sx], v10 = src[sy * sw + sx + 1];
+      const v01 = src[(sy+1) * sw + sx], v11 = src[(sy+1) * sw + sx + 1];
+      const top = v00 + (v10 - v00) * fx;
+      const bot = v01 + (v11 - v01) * fx;
+      dst[dy * dw + dx] = Math.round(Math.max(0, Math.min(255, top + (bot - top) * fy)));
+    }
+  }
+  return dst;
+}
+
+// Gamma correction
+function gammaFromThresh(th) {
+  let g = 2.0 - th / 128.0;
+  if (g < 0.1) g = 0.1;
+  if (g > 3.9) g = 3.9;
+  return g;
+}
+
+function applyGamma(v, gamma) {
+  return Math.round(Math.pow(v / 255, gamma) * 255);
+}
+
+// Autocontrast
+function preprocAutocontrast(grey, w, h) {
+  const n = w * h;
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < n; i++) hist[grey[i]]++;
+  let total = 0, lo = 0, hi = 255;
+  const loTarget = Math.max(1, Math.floor(n * 2 / 100));
+  const hiTarget = Math.min(n - 1, Math.floor(n * 98 / 100));
+  for (let i = 0; i < 256; i++) { total += hist[i]; if (total >= loTarget) { lo = i; break; } }
+  total = 0;
+  for (let i = 255; i >= 0; i--) { total += hist[i]; if (total >= n - hiTarget) { hi = i; break; } }
+  if (hi <= lo + 4) hi = lo + 4;
+  if (hi > 255) hi = 255;
+  for (let i = 0; i < n; i++) {
+    let v = (grey[i] - lo) * 255 / (hi - lo);
+    grey[i] = Math.max(0, Math.min(255, Math.round(v)));
+  }
+}
+
+function preprocGamma(grey, w, h, th) {
+  const gamma = gammaFromThresh(th);
+  const lut = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) lut[i] = Math.round(Math.pow(i / 255, gamma) * 255);
+  const n = w * h;
+  for (let i = 0; i < n; i++) grey[i] = lut[grey[i]];
+}
+
+function preprocSharpen(grey, w, h, strength) {
+  if (strength <= 0) return;
+  const tmp = new Uint8Array(grey);
+  for (let y = 1; y < h - 1; y++)
+    for (let x = 1; x < w - 1; x++) {
+      const c = tmp[y * w + x];
+      const lap = c * 4 - tmp[(y-1)*w+x] - tmp[(y+1)*w+x] - tmp[y*w+x-1] - tmp[y*w+x+1];
+      grey[y * w + x] = Math.max(0, Math.min(255, Math.round(c + lap * strength * 0.5)));
+    }
+}
+
+function preprocAll(grey, w, h, th) {
+  preprocAutocontrast(grey, w, h);
+  preprocGamma(grey, w, h, th);
+  preprocSharpen(grey, w, h, 0.8);
+}
+
+// ── Dithers ───────────────────────────────────────────────
+
+function ditherFS(grey, w, h, out) {
+  const stride = w + 2;
+  let errCur = new Int16Array(stride);
+  let errNext = new Int16Array(stride);
+  for (let y = 0; y < h; y++) {
+    errNext.fill(0);
+    for (let x = 0; x < w; x++) {
+      const old = grey[y * w + x] + errCur[x + 1];
+      const np = old > 128 ? 255 : 0;
+      out[y * w + x] = np;
+      const err = old - np;
+      if (x + 1 < w) errCur[x + 2] += (err * 7) / 16;
+      if (x - 1 >= 0) errNext[x] += (err * 3) / 16;
+      errNext[x + 1] += (err * 5) / 16;
+      if (x + 1 < w) errNext[x + 2] += (err * 1) / 16;
+    }
+    [errCur, errNext] = [errNext, errCur];
+  }
+}
+
+function ditherAtkinson(grey, w, h, out) {
+  const stride = w + 4;
+  let row0 = new Int32Array(stride);
+  let row1 = new Int32Array(stride);
+  let row2 = new Int32Array(stride);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const old = grey[y * w + x] + row0[x + 2];
+      const np = old > 128 ? 255 : 0;
+      out[y * w + x] = np;
+      const err8 = Math.round((old - np) / 8);
+      if (x + 1 < w) row0[x + 3] += err8;
+      if (x + 2 < w) row0[x + 4] += err8;
+      if (x - 1 >= 0) row1[x + 1] += err8;
+      row1[x + 2] += err8;
+      if (x + 1 < w) row1[x + 3] += err8;
+      row2[x + 2] += err8;
+    }
+    [row0, row1, row2] = [row1, row2, row0];
+    row2 = new Int32Array(stride);
+  }
+}
+
+function ditherJarvis(grey, w, h, out) {
+  const stride = w + 4;
+  let r0 = new Int32Array(stride), r1 = new Int32Array(stride), r2 = new Int32Array(stride);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const old = grey[y * w + x] + r0[x + 2];
+      const np = old > 128 ? 255 : 0;
+      out[y * w + x] = np;
+      const err = old - np;
+      if (x + 1 < w) r0[x+3] += (err * 7) / 48;
+      if (x + 2 < w) r0[x+4] += (err * 5) / 48;
+      if (x - 2 >= 0) r1[x] += (err * 3) / 48;
+      if (x - 1 >= 0) r1[x+1] += (err * 5) / 48;
+      r1[x+2] += (err * 7) / 48;
+      if (x + 1 < w) r1[x+3] += (err * 5) / 48;
+      if (x + 2 < w) r1[x+4] += (err * 3) / 48;
+      if (x - 2 >= 0) r2[x] += (err * 1) / 48;
+      if (x - 1 >= 0) r2[x+1] += (err * 3) / 48;
+      r2[x+2] += (err * 5) / 48;
+      if (x + 1 < w) r2[x+3] += (err * 3) / 48;
+      if (x + 2 < w) r2[x+4] += (err * 1) / 48;
+    }
+    [r0, r1, r2] = [r1, r2, r0];
+    r2 = new Int32Array(stride);
+  }
+}
+
+function ditherStucki(grey, w, h, out) {
+  const stride = w + 4;
+  let r0 = new Int32Array(stride), r1 = new Int32Array(stride), r2 = new Int32Array(stride);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const old = grey[y * w + x] + r0[x + 2];
+      const np = old > 128 ? 255 : 0;
+      out[y * w + x] = np;
+      const err = old - np;
+      if (x + 1 < w) r0[x+3] += (err * 8) / 42;
+      if (x + 2 < w) r0[x+4] += (err * 4) / 42;
+      if (x - 2 >= 0) r1[x] += (err * 2) / 42;
+      if (x - 1 >= 0) r1[x+1] += (err * 4) / 42;
+      r1[x+2] += (err * 8) / 42;
+      if (x + 1 < w) r1[x+3] += (err * 4) / 42;
+      if (x + 2 < w) r1[x+4] += (err * 2) / 42;
+      if (x - 2 >= 0) r2[x] += (err * 1) / 42;
+      if (x - 1 >= 0) r2[x+1] += (err * 2) / 42;
+      r2[x+2] += (err * 4) / 42;
+      if (x + 1 < w) r2[x+3] += (err * 2) / 42;
+      if (x + 2 < w) r2[x+4] += (err * 1) / 42;
+    }
+    [r0, r1, r2] = [r1, r2, r0];
+    r2 = new Int32Array(stride);
+  }
+}
+
+function ditherBayer(grey, w, h, out, n) {
+  const bayer2 = [[0,2],[3,1]];
+  const bayer4 = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+  const bayer8 = [
+    [0,48,12,60,3,51,15,63],[32,16,44,28,35,19,47,31],
+    [8,56,4,52,11,59,7,55],[40,24,36,20,43,27,39,23],
+    [2,50,14,62,1,49,13,61],[34,18,46,30,33,17,45,29],
+    [10,58,6,54,9,57,5,53],[42,26,38,22,41,25,37,21]];
+  const total = n * n;
+  const bayer = n === 2 ? bayer2 : n === 4 ? bayer4 : bayer8;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const b = bayer[y % n][x % n];
+      const t = Math.round((b * 256 + total / 2) / total);
+      out[y * w + x] = grey[y * w + x] > t ? 255 : 0;
+    }
+}
+
+function ditherRandom(grey, w, h, out) {
+  let state = 0x12345678;
+  for (let i = 0; i < w * h; i++) {
+    state ^= state << 13; state ^= state >> 17; state ^= state << 5;
+    out[i] = grey[i] > (state & 0xFF) ? 255 : 0;
+  }
+}
+
+function effectDither(grey, w, h, out, method, threshold) {
+  switch (method) {
+    case 0: ditherFS(grey, w, h, out); break;
+    case 1: ditherAtkinson(grey, w, h, out); break;
+    case 2: ditherJarvis(grey, w, h, out); break;
+    case 3: ditherStucki(grey, w, h, out); break;
+    case 4: ditherBayer(grey, w, h, out, 2); break;
+    case 5: ditherBayer(grey, w, h, out, 4); break;
+    case 6: ditherBayer(grey, w, h, out, 8); break;
+    case 7: ditherRandom(grey, w, h, out); break;
+    case 8: for (let i = 0; i < w * h; i++) out[i] = grey[i] > threshold ? 255 : 0; break;
+    default: ditherFS(grey, w, h, out); break;
+  }
+  for (let i = 0; i < w * h; i++) out[i] = 255 - out[i];
+}
+
+// ── Halftone ──────────────────────────────────────────────
+
+function initScreens(maxSz) {
+  const screens = [];
+  for (let sz = 2; sz <= maxSz; sz++) {
+    const half = sz / 2;
+    let maxD = 0;
+    const tmp = [];
+    for (let y = 0; y < sz; y++) {
+      tmp[y] = [];
+      for (let x = 0; x < sz; x++) {
+        const d = (x - half + 0.5) ** 2 + (y - half + 0.5) ** 2;
+        tmp[y][x] = d;
+        if (d > maxD) maxD = d;
+      }
+    }
+    if (maxD < 0.001) maxD = 1;
+    const screen = [];
+    for (let y = 0; y < sz; y++) {
+      screen[y] = [];
+      for (let x = 0; x < sz; x++)
+        screen[y][x] = Math.round(tmp[y][x] / maxD * 254);
+    }
+    screens[sz] = screen;
+  }
+  return screens;
+}
+const MAX_SCREEN = 16;
+let screens = null;
+
+function effectHalftone(grey, w, h, out, dotSize, thresh) {
+  if (!screens) screens = initScreens(MAX_SCREEN);
+  let sz = Math.max(2, Math.min(MAX_SCREEN, dotSize));
+  const gamma = gammaFromThresh(thresh);
+  const lut = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) lut[i] = applyGamma(i, gamma);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const gv = lut[grey[y*w+x]];
+      out[y * w + x] = gv > screens[sz][y % sz][x % sz] ? 255 : 0;
+    }
+  for (let i = 0; i < w * h; i++) out[i] = 255 - out[i];
+}
+
+function effectLine(grey, w, h, out, period, angle, thresh) {
+  if (period < 4) period = 4;
+  const rad = angle * Math.PI / 180;
+  const sa = Math.sin(rad), ca = Math.cos(rad);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const d = x * sa + y * ca;
+      let pos = d / period - Math.floor(d / period);
+      if (pos < 0) pos += 1;
+      const dist = pos > 0.5 ? 1 - pos : pos;
+      const screen = Math.round((1 - 2 * dist) * 254);
+      out[y * w + x] = grey[y * w + x] > Math.max(0, screen) ? 255 : 0;
+    }
+  for (let i = 0; i < w * h; i++) out[i] = 255 - out[i];
+}
+
+function effectCrosshatch(grey, w, h, out, period, thresh) {
+  if (period < 4) period = 4;
+  const r45 = Math.PI / 4;
+  const s45 = Math.sin(r45), c45 = Math.cos(r45);
+  const s135 = Math.sin(-r45), c135 = Math.cos(-r45);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const d1 = x * s45 + y * c45;
+      let p1 = d1 / period - Math.floor(d1 / period);
+      if (p1 < 0) p1 += 1;
+      const dist1 = p1 > 0.5 ? 1 - p1 : p1;
+      const s1 = Math.round((1 - 2 * dist1) * 254);
+      const d2 = x * s135 + y * c135;
+      let p2 = d2 / period - Math.floor(d2 / period);
+      if (p2 < 0) p2 += 1;
+      const dist2 = p2 > 0.5 ? 1 - p2 : p2;
+      const s2 = Math.round((1 - 2 * dist2) * 254);
+      const screen = Math.max(0, Math.min(s1, s2));
+      out[y * w + x] = grey[y * w + x] > screen ? 255 : 0;
+    }
+  for (let i = 0; i < w * h; i++) out[i] = 255 - out[i];
+}
+
+// ── Pixelate ──────────────────────────────────────────────
+
+function effectPixelate(grey, w, h, out, blockSize) {
+  if (blockSize < 2) blockSize = 2;
+  const cw = Math.max(1, Math.floor(w / blockSize));
+  const ch = Math.max(1, Math.floor(h / blockSize));
+  const small = new Uint8Array(cw * ch);
+  for (let cy = 0; cy < ch; cy++)
+    for (let cx = 0; cx < cw; cx++) {
+      const sy = Math.min(cy * blockSize + Math.floor(blockSize / 2), h - 1);
+      const sx = Math.min(cx * blockSize + Math.floor(blockSize / 2), w - 1);
+      small[cy * cw + cx] = grey[sy * w + sx];
+    }
+  const dithered = new Uint8Array(cw * ch);
+  ditherFS(small, cw, ch, dithered);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const sy = Math.min(Math.floor(y / blockSize), ch - 1);
+      const sx = Math.min(Math.floor(x / blockSize), cw - 1);
+      out[y * w + x] = dithered[sy * cw + sx];
+    }
+  for (let i = 0; i < w * h; i++) out[i] = 255 - out[i];
+}
+
+// ── ASCII art font (IBM VGA 8x8, subset) ──────────────────
+const FONT8x8 = [
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0x18,0x18,0x18,0x18,0x18,0x00,0x18,0x00,
+  0x66,0x66,0x24,0x00,0x00,0x00,0x00,0x00,
+  0x6c,0x6c,0xfe,0x6c,0xfe,0x6c,0x6c,0x00,
+  0x18,0x3e,0x7c,0x3e,0x1e,0x1e,0x3e,0x18,
+  0x00,0xc6,0xcc,0x18,0x30,0x66,0xc6,0x00,
+  0x38,0x6c,0x6c,0x38,0x76,0xdc,0xcc,0x76,
+  0x18,0x18,0x30,0x00,0x00,0x00,0x00,0x00,
+  0x0c,0x18,0x30,0x30,0x30,0x18,0x0c,0x00,
+  0x60,0x30,0x18,0x18,0x18,0x30,0x60,0x00,
+  0x00,0x66,0x3c,0xff,0x3c,0x66,0x00,0x00,
+  0x00,0x18,0x18,0x7e,0x18,0x18,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x18,0x18,0x30,0x00,
+  0x00,0x00,0x00,0x7e,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x00,
+  0x06,0x0c,0x18,0x30,0x60,0xc0,0x80,0x00,
+  0x3c,0x66,0x76,0x7e,0x6e,0x66,0x3c,0x00,
+  0x18,0x38,0x18,0x18,0x18,0x18,0x7e,0x00,
+  0x3c,0x66,0x06,0x0c,0x30,0x60,0x7e,0x00,
+  0x3c,0x66,0x06,0x1c,0x06,0x66,0x3c,0x00,
+  0x0c,0x1c,0x3c,0x6c,0xfe,0x0c,0x0c,0x00,
+  0x7e,0x60,0x7c,0x06,0x06,0x66,0x3c,0x00,
+  0x3c,0x66,0x60,0x7c,0x66,0x66,0x3c,0x00,
+  0x7e,0x06,0x0c,0x18,0x30,0x30,0x30,0x00,
+  0x3c,0x66,0x66,0x3c,0x66,0x66,0x3c,0x00,
+  0x3c,0x66,0x66,0x3e,0x06,0x66,0x3c,0x00,
+  0x00,0x18,0x18,0x00,0x18,0x18,0x00,0x00,
+  0x00,0x18,0x18,0x00,0x18,0x18,0x30,0x00,
+  0x06,0x0c,0x18,0x30,0x18,0x0c,0x06,0x00,
+  0x00,0x00,0x7e,0x00,0x7e,0x00,0x00,0x00,
+  0x60,0x30,0x18,0x0c,0x18,0x30,0x60,0x00,
+  0x3c,0x66,0x06,0x0c,0x18,0x00,0x18,0x00,
+  0x3c,0x66,0x6e,0x7e,0x7e,0x60,0x3c,0x00,
+  0x3c,0x66,0x66,0x7e,0x66,0x66,0x66,0x00,
+  0x7c,0x66,0x66,0x7c,0x66,0x66,0x7c,0x00,
+  0x3c,0x66,0x60,0x60,0x60,0x66,0x3c,0x00,
+  0x78,0x6c,0x66,0x66,0x66,0x6c,0x78,0x00,
+  0x7e,0x60,0x60,0x7c,0x60,0x60,0x7e,0x00,
+  0x7e,0x60,0x60,0x7c,0x60,0x60,0x60,0x00,
+  0x3c,0x66,0x60,0x6e,0x66,0x66,0x3e,0x00,
+  0x66,0x66,0x66,0x7e,0x66,0x66,0x66,0x00,
+  0x7e,0x18,0x18,0x18,0x18,0x18,0x7e,0x00,
+  0x06,0x06,0x06,0x06,0x06,0x66,0x3c,0x00,
+  0x66,0x6c,0x78,0x70,0x78,0x6c,0x66,0x00,
+  0x60,0x60,0x60,0x60,0x60,0x60,0x7e,0x00,
+  0xc6,0xee,0xfe,0xfe,0xd6,0xc6,0xc6,0x00,
+  0x66,0x76,0x7e,0x7e,0x6e,0x66,0x66,0x00,
+  0x3c,0x66,0x66,0x66,0x66,0x66,0x3c,0x00,
+  0x7c,0x66,0x66,0x7c,0x60,0x60,0x60,0x00,
+  0x3c,0x66,0x66,0x66,0x6e,0x3c,0x07,0x00,
+  0x7c,0x66,0x66,0x7c,0x78,0x6c,0x66,0x00,
+  0x3c,0x66,0x60,0x3c,0x06,0x66,0x3c,0x00,
+  0x7e,0x18,0x18,0x18,0x18,0x18,0x18,0x00,
+  0x66,0x66,0x66,0x66,0x66,0x66,0x3c,0x00,
+  0x66,0x66,0x66,0x66,0x66,0x3c,0x18,0x00,
+  0xc6,0xc6,0xc6,0xd6,0xfe,0xee,0xc6,0x00,
+  0x66,0x66,0x3c,0x18,0x3c,0x66,0x66,0x00,
+  0x66,0x66,0x66,0x3c,0x18,0x18,0x18,0x00,
+  0x7e,0x06,0x0c,0x18,0x30,0x60,0x7e,0x00,
+  0x7e,0x60,0x60,0x60,0x60,0x60,0x7e,0x00,
+  0xc0,0x60,0x30,0x18,0x0c,0x06,0x02,0x00,
+  0x7e,0x06,0x06,0x06,0x06,0x06,0x7e,0x00,
+  0x18,0x3c,0x66,0x00,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xff,
+  0x30,0x18,0x0c,0x00,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x3c,0x06,0x3e,0x66,0x3e,0x00,
+  0x60,0x60,0x7c,0x66,0x66,0x66,0x7c,0x00,
+  0x00,0x00,0x3c,0x66,0x60,0x66,0x3c,0x00,
+  0x06,0x06,0x3e,0x66,0x66,0x66,0x3e,0x00,
+  0x00,0x00,0x3c,0x66,0x7e,0x60,0x3c,0x00,
+  0x1c,0x36,0x30,0x78,0x30,0x30,0x30,0x00,
+  0x00,0x3e,0x66,0x66,0x3e,0x06,0x3c,0x00,
+  0x60,0x60,0x7c,0x66,0x66,0x66,0x66,0x00,
+  0x18,0x00,0x38,0x18,0x18,0x18,0x3c,0x00,
+  0x0c,0x00,0x1c,0x0c,0x0c,0x0c,0x6c,0x38,
+  0x60,0x60,0x66,0x6c,0x78,0x6c,0x66,0x00,
+  0x38,0x18,0x18,0x18,0x18,0x18,0x3c,0x00,
+  0x00,0x00,0xec,0xfe,0xd6,0xc6,0xc6,0x00,
+  0x00,0x00,0x7c,0x66,0x66,0x66,0x66,0x00,
+  0x00,0x00,0x3c,0x66,0x66,0x66,0x3c,0x00,
+  0x00,0x00,0x7c,0x66,0x66,0x7c,0x60,0x60,
+  0x00,0x00,0x3e,0x66,0x66,0x3e,0x06,0x06,
+  0x00,0x00,0x7c,0x66,0x60,0x60,0x60,0x00,
+  0x00,0x00,0x3e,0x60,0x3c,0x06,0x7c,0x00,
+  0x30,0x30,0x7c,0x30,0x30,0x34,0x18,0x00,
+  0x00,0x00,0x66,0x66,0x66,0x66,0x3e,0x00,
+  0x00,0x00,0x66,0x66,0x66,0x3c,0x18,0x00,
+  0x00,0x00,0xc6,0xc6,0xd6,0xfe,0x6c,0x00,
+  0x00,0x00,0x66,0x3c,0x18,0x3c,0x66,0x00,
+  0x00,0x00,0x66,0x66,0x66,0x3e,0x06,0x3c,
+  0x00,0x00,0x7e,0x0c,0x18,0x30,0x7e,0x00,
+  0x0c,0x18,0x18,0x70,0x18,0x18,0x0c,0x00,
+  0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x00,
+  0x60,0x30,0x30,0x1c,0x30,0x30,0x60,0x00,
+  0x76,0xdc,0x00,0x00,0x00,0x00,0x00,0x00,
+];
+
+function effectAscii(grey, w, h, out, cols, charset) {
+  if (cols < 8) cols = 8;
+  const nchars = Math.min(charset.length, 32);
+  const rows = Math.max(1, Math.round((h * cols) / w));
+  const rw = cols * 8, rh = rows * 8;
+  out.fill(0, 0, rw * rh);
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      const x0 = Math.floor(c * w / cols), x1 = Math.floor((c + 1) * w / cols);
+      const y0 = Math.floor(r * h / rows), y1 = Math.floor((r + 1) * h / rows);
+      let sum = 0, cnt = 0;
+      for (let yy = y0; yy < y1; yy++)
+        for (let xx = x0; xx < x1; xx++) { sum += grey[yy * w + xx]; cnt++; }
+      let ci = Math.floor(sum / cnt * nchars / 256);
+      if (ci >= nchars) ci = nchars - 1;
+      let fidx = charset.charCodeAt(ci) - 32;
+      if (fidx < 0 || fidx > 94) fidx = 0;
+      for (let gy = 0; gy < 8 && r * 8 + gy < rh; gy++) {
+        const row = FONT8x8[fidx * 8 + gy];
+        for (let gx = 0; gx < 8 && c * 8 + gx < rw; gx++)
+          if (row & (0x80 >> gx))
+            out[(r * 8 + gy) * rw + (c * 8 + gx)] = 255;
+      }
+    }
+  return {w: rw, h: rh};
+}
+
+function effectBinary(grey, w, h, out, cols) {
+  if (cols < 8) cols = 8;
+  const rows = Math.max(1, Math.round((h * cols) / w));
+  const rw = cols * 8, rh = rows * 8;
+  let sum = 0;
+  for (let i = 0; i < w * h; i++) sum += grey[i];
+  const avg = Math.floor(sum / (w * h));
+  const bg = avg > 200 ? 180 : Math.max(avg, 100);
+  out.fill(0, 0, rw * rh);
+  const cset = ".,01";
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      const sx = Math.min(Math.floor(c * w / cols), w - 1);
+      const sy = Math.min(Math.floor(r * h / rows), h - 1);
+      const pv = grey[sy * w + sx];
+      let ch = ' ';
+      if (pv <= bg) {
+        let idx = Math.floor((bg - pv) * 3 / bg);
+        if (idx > 3) idx = 3;
+        ch = cset[idx];
+      }
+      let fidx = ch.charCodeAt(0) - 32;
+      if (fidx < 0 || fidx > 94) fidx = 0;
+      for (let gy = 0; gy < 8 && r * 8 + gy < rh; gy++) {
+        const row = FONT8x8[fidx * 8 + gy];
+        for (let gx = 0; gx < 8 && c * 8 + gx < rw; gx++)
+          if (row & (0x80 >> gx))
+            out[(r * 8 + gy) * rw + (c * 8 + gx)] = 255;
+      }
+    }
+  return {w: rw, h: rh};
+}
+
+// ── Silhouette ────────────────────────────────────────────
+
+function effectSilhouette(grey, w, h, out, threshold) {
+  for (let i = 0; i < w * h; i++)
+    out[i] = grey[i] > threshold ? 255 : 0;
+  for (let i = 0; i < w * h; i++) out[i] = 255 - out[i];
+}
+
+// ── Blocks ────────────────────────────────────────────────
+
+function effectBlocks(grey, w, h, out, blockSize, levels) {
+  if (blockSize < 2) blockSize = 2;
+  if (blockSize > 16) blockSize = 16;
+  if (levels < 2) levels = 2;
+  if (levels > 8) levels = 8;
+  const bs = blockSize;
+  const total = bs * bs;
+  const order = [];
+  const cy = (bs - 1) / 2, cx = (bs - 1) / 2;
+  for (let py = 0; py < bs; py++)
+    for (let px = 0; px < bs; px++) {
+      const d = Math.round((py - cy) ** 2 + (px - cx) ** 2);
+      order.push({d, py, px});
+    }
+  order.sort((a, b) => a.d - b.d);
+  const pat = [];
+  for (let l = 0; l < levels; l++) {
+    const p = new Uint8Array(bs * bs);
+    const n = (l === levels - 1) ? total : Math.round(l * total / (levels - 1));
+    for (let i = 0; i < n && i < total; i++)
+      p[order[i].py * bs + order[i].px] = 255;
+    pat.push(p);
+  }
+  const cw = Math.ceil(w / bs), ch = Math.ceil(h / bs);
+  for (let gy = 0; gy < ch; gy++)
+    for (let gx = 0; gx < cw; gx++) {
+      const x0 = Math.floor(gx * w / cw), x1 = Math.floor((gx + 1) * w / cw);
+      const y0 = Math.floor(gy * h / ch), y1 = Math.floor((gy + 1) * h / ch);
+      let sum = 0, cnt = 0;
+      for (let yy = y0; yy < y1; yy++)
+        for (let xx = x0; xx < x1; xx++) { sum += grey[yy * w + xx]; cnt++; }
+      const br = Math.floor(sum / cnt);
+      let l = Math.floor(br * levels / 256);
+      if (l >= levels) l = levels - 1;
+      if (l < 0) l = 0;
+      for (let py = 0; py < bs && gy * bs + py < h; py++)
+        for (let px = 0; px < bs && gx * bs + px < w; px++)
+          out[(gy * bs + py) * w + (gx * bs + px)] = pat[l][py * bs + px];
+    }
+  for (let i = 0; i < w * h; i++) out[i] = 255 - out[i];
+}
+
+// ── Comic / Ben-Day dots ──────────────────────────────────
+
+function effectComic(grey, w, h, out, dotSize, levels) {
+  if (dotSize < 2) dotSize = 2;
+  if (dotSize > 16) dotSize = 16;
+  if (levels < 2) levels = 2;
+  if (levels > 8) levels = 8;
+  const bs = dotSize;
+  const total = bs * bs;
+  const order = [];
+  const cy = (bs - 1) / 2, cx = (bs - 1) / 2;
+  for (let py = 0; py < bs; py++)
+    for (let px = 0; px < bs; px++) {
+      const d = Math.round((py - cy) ** 2 + (px - cx) ** 2);
+      order.push({d, py, px});
+    }
+  order.sort((a, b) => a.d - b.d);
+  const pat = [];
+  for (let l = 0; l < levels; l++) {
+    const p = new Uint8Array(bs * bs);
+    const n = (l === levels - 1) ? total : Math.round(l * total / (levels - 1));
+    for (let i = 0; i < n && i < total; i++)
+      p[order[i].py * bs + order[i].px] = 255;
+    pat.push(p);
+  }
+  const cw = Math.ceil(w / bs), ch = Math.ceil(h / bs);
+  for (let gy = 0; gy < ch; gy++)
+    for (let gx = 0; gx < cw; gx++) {
+      const x0 = Math.floor(gx * w / cw), x1 = Math.floor((gx + 1) * w / cw);
+      const y0 = Math.floor(gy * h / ch), y1 = Math.floor((gy + 1) * h / ch);
+      let sum = 0, cnt = 0;
+      for (let yy = y0; yy < y1; yy++)
+        for (let xx = x0; xx < x1; xx++) { sum += grey[yy * w + xx]; cnt++; }
+      const br = Math.floor(sum / cnt);
+      let l = Math.floor(br * levels / 256);
+      if (l >= levels) l = levels - 1;
+      if (l < 0) l = 0;
+      for (let py = 0; py < bs && gy * bs + py < h; py++)
+        for (let px = 0; px < bs && gx * bs + px < w; px++)
+          out[(gy * bs + py) * w + (gx * bs + px)] = pat[l][py * bs + px];
+    }
+  for (let i = 0; i < w * h; i++) out[i] = 255 - out[i];
+}
+
+// ── Pixel replication (post-process) ──────────────────────
+
+function applyPixelReplication(bitmap, w, h, factor) {
+  if (factor <= 1) return;
+  const tmp = new Uint8Array(bitmap);
+  for (let y = 0; y < h; y++) {
+    const sy = Math.min(Math.floor(y / factor) * factor + Math.floor(factor / 2), h - 1);
+    for (let x = 0; x < w; x++) {
+      const sx = Math.min(Math.floor(x / factor) * factor + Math.floor(factor / 2), w - 1);
+      bitmap[y * w + x] = tmp[sy * w + sx];
+    }
+  }
+}
+
+// ── Auto quality evaluator ───────────────────────────────
+function evalQuality(bitmap, w, h) {
+  let ink = 0, edges = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x;
+      if (bitmap[p] < 128) ink++;
+      if (x > 0 && (bitmap[p] < 128) !== (bitmap[p - 1] < 128)) edges++;
+      if (y > 0 && (bitmap[p] < 128) !== (bitmap[p - w] < 128)) edges++;
+    }
+  }
+  const cov = ink / (w * h);
+  let covScore;
+  if (cov < 0.05 || cov > 0.80) covScore = 0;
+  else if (cov < 0.10) covScore = (cov - 0.05) / 0.05;
+  else if (cov > 0.60) covScore = (0.80 - cov) / 0.20;
+  else covScore = 1;
+  return Math.round(edges * covScore);
+}
+
+/* Run one effect and return {bitmap, w, h} */
+function runEffect(small, outW, outH, fxId, thresh, dot, levels, invert) {
+  let bitmap = new Uint8Array(outW * outH);
+  let outW2 = outW, outH2 = outH;
+
+  let effDot = dot;
+  if (fxId === 9) effDot = 4;
+  else if (fxId === 10 || fxId === 11) effDot = 8;
+
+  switch (fxId) {
+    case 0: effectDither(small, outW, outH, bitmap, 0, thresh); break;
+    case 1: effectDither(small, outW, outH, bitmap, 1, thresh); break;
+    case 2: effectDither(small, outW, outH, bitmap, 2, thresh); break;
+    case 3: effectDither(small, outW, outH, bitmap, 3, thresh); break;
+    case 4: effectDither(small, outW, outH, bitmap, 4, thresh); break;
+    case 5: effectDither(small, outW, outH, bitmap, 5, thresh); break;
+    case 6: effectDither(small, outW, outH, bitmap, 6, thresh); break;
+    case 7: effectDither(small, outW, outH, bitmap, 7, thresh); break;
+    case 8: effectDither(small, outW, outH, bitmap, 8, thresh); break;
+    case 9: effectHalftone(small, outW, outH, bitmap, effDot, thresh); break;
+    case 10: effectLine(small, outW, outH, bitmap, effDot, 45, thresh); break;
+    case 11: effectCrosshatch(small, outW, outH, bitmap, effDot, thresh); break;
+    case 12: effectPixelate(small, outW, outH, bitmap, dot); break;
+    case 13: {
+      const cols = Math.floor(outW / 8);
+      const cs = invert ? "@%#*+=-:. " : " .:-=+*#%@";
+      const r = effectAscii(small, outW, outH, bitmap, cols, cs);
+      outW2 = r.w; outH2 = r.h;
+      break;
+    }
+    case 14: {
+      const cols = Math.floor(outW / 8);
+      const r = effectBinary(small, outW, outH, bitmap, cols);
+      outW2 = r.w; outH2 = r.h;
+      break;
+    }
+    case 15: effectComic(small, outW, outH, bitmap, dot, levels); break;
+    case 16: effectSilhouette(small, outW, outH, bitmap, thresh); break;
+    case 17: effectBlocks(small, outW, outH, bitmap, dot, levels); break;
+  }
+
+  const doRep = !(fxId === FX_ASCII || fxId === FX_BINARY || FX_INTERNAL_DOT.has(fxId));
+  if (doRep && dot > 1) applyPixelReplication(bitmap, outW2, outH2, dot);
+
+  if (fxId !== FX_BINARY)
+    for (let i = 0; i < outW2 * outH2; i++) bitmap[i] = 255 - bitmap[i];
+  if (invert)
+    for (let i = 0; i < outW2 * outH2; i++) bitmap[i] = 255 - bitmap[i];
+
+  return {bitmap, w: outW2, h: outH2};
+}
+
+// ── App: sources (camera / samples / upload), controls, render loop ──
+const OUTPUT_W = 384;      // printer width in dots
+const LIVE_FPS = 15;       // live preview cap: plenty for a preview, light on phones
+const $ = id => document.getElementById(id);
+const out = $('out'), octx = out.getContext('2d');
+const inp = $('inp'), ictx = inp.getContext('2d');
+const work = document.createElement('canvas'), wctx = work.getContext('2d', {willReadFrequently: true});
+const statusEl = $('status'), statsEl = $('stats');
+const camBtn = $('camBtn'), flipBtn = $('flipBtn'), snapBtn = $('snapBtn');
+const fxSel = $('fx'), thresh = $('thresh'), dot = $('dot'), levels = $('levels');
+const invertChk = $('invert'), preprocChk = $('preproc');
+
+FX.forEach(f => { const o = document.createElement('option'); o.value = f.id; o.textContent = String(f.id).padStart(2, '0') + '  ' + f.label; fxSel.appendChild(o); });
+
+let source = null;          // {data: Uint8Array grey, w, h} already at OUTPUT_W wide
+let outImg = null;
+const setStatus = t => { statusEl.textContent = t; };
+const markSource = key => document.querySelectorAll('[data-sample]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sample === key)));
+
+// draw any image-like (img, video, canvas) into a 384-wide greyscale buffer
+function grab(el, sw, sh, mirror) {
+  const w = OUTPUT_W, h = Math.max(1, Math.round(sh * w / sw));
+  if (work.width !== w || work.height !== h) { work.width = w; work.height = h; }
+  wctx.save();
+  if (mirror) { wctx.translate(w, 0); wctx.scale(-1, 1); }
+  wctx.drawImage(el, 0, 0, w, h);
+  wctx.restore();
+  const px = wctx.getImageData(0, 0, w, h).data, grey = new Uint8Array(w * h);
+  for (let i = 0, j = 0; i < grey.length; i++, j += 4) grey[i] = (px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8;
+  if (inp.width !== w || inp.height !== h) { inp.width = w; inp.height = h; }
+  ictx.drawImage(work, 0, 0);
+  return {data: grey, w, h};
+}
+
+function render() {
+  const fxId = +fxSel.value;
+  $('fDot').classList.toggle('off', fxId === FX_ASCII || fxId === FX_BINARY);
+  $('fLevels').classList.toggle('off', fxId !== 15 && fxId !== 17);
+  if (!source) return;
+  const t0 = performance.now();
+  const small = new Uint8Array(source.data);           // effects mutate their input
+  if (preprocChk.checked) preprocAll(small, source.w, source.h, +thresh.value);
+  const r = runEffect(small, source.w, source.h, fxId, +thresh.value, +dot.value, +levels.value, invertChk.checked);
+  if (out.width !== r.w || out.height !== r.h || !outImg) { out.width = r.w; out.height = r.h; outImg = octx.createImageData(r.w, r.h); }
+  const d = outImg.data;
+  for (let i = 0, j = 0; i < r.w * r.h; i++, j += 4) { const v = 255 - r.bitmap[i]; d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255; }
+  octx.putImageData(outImg, 0, 0);
+  statsEl.textContent = `${r.w}×${r.h} dots · ${(performance.now() - t0).toFixed(1)} ms/frame`;
+}
+
+[thresh, dot, levels].forEach(el => el.addEventListener('input', () => { $(el.id + 'V').textContent = el.value; if (!live || frozen) render(); }));
+[fxSel, invertChk, preprocChk].forEach(el => el.addEventListener('change', () => { if (!live || frozen) render(); }));
+
+// ── Still sources ────────────────────────────────────────
+function useImage(img, key, label) {
+  stopCamera();
+  source = grab(img, img.naturalWidth || img.width, img.naturalHeight || img.height, false);
+  markSource(key); setStatus(label); render();
+}
+function makeTestcard() {
+  const w = 640, h = 480, g = genTestcard(w, h), c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const id = c.getContext('2d').createImageData(w, h);
+  for (let i = 0; i < w * h; i++) { id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = g[i]; id.data[i * 4 + 3] = 255; }
+  c.getContext('2d').putImageData(id, 0, 0);
+  return c;
+}
+const testcard = makeTestcard();
+$('tcThumb').getContext('2d').drawImage(testcard, 0, 0, 52, 52);
+
+document.querySelectorAll('[data-sample]').forEach(b => b.addEventListener('click', () => {
+  const key = b.dataset.sample;
+  if (key === 'testcard') return useImage(testcard, key, 'Test card');
+  const img = new Image();
+  setStatus('Loading sample…');
+  img.onload = () => useImage(img, key, 'Sample: ' + b.title);
+  img.onerror = () => setStatus('Could not load that sample.');
+  img.src = `/img/1bit-camera/samples/${key}.jpg`;
+}));
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) { setStatus('Please choose an image file.'); return; }
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onload = () => { useImage(img, null, 'Your photo: ' + file.name); URL.revokeObjectURL(url); };
+  img.onerror = () => { setStatus('Could not read that image.'); URL.revokeObjectURL(url); };
+  img.src = url;
+}
+$('file').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
+const view = $('view');
+view.addEventListener('dragover', e => { e.preventDefault(); view.classList.add('drop'); });
+view.addEventListener('dragleave', () => view.classList.remove('drop'));
+view.addEventListener('drop', e => { e.preventDefault(); view.classList.remove('drop'); loadFile(e.dataTransfer.files[0]); });
+
+// ── Live camera ──────────────────────────────────────────
+// The camera only starts on a click, and the stream is stopped whenever the
+// simulator scrolls out of view or the tab is hidden, so it costs nothing idle.
+// Safari only hands frames to canvas from a <video> that is in the document,
+// so keep it attached but invisible.
+const video = document.createElement('video');
+video.muted = true; video.playsInline = true; video.autoplay = true;
+video.setAttribute('playsinline', ''); video.setAttribute('aria-hidden', 'true');
+video.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+document.body.appendChild(video);
+let stream = null, live = false, frozen = false, facing = 'user', raf = 0, last = 0, gotFrame = false;
+let onScreen = true;
+
+// why the camera can't start, in words a visitor can act on
+function cameraProblem(err) {
+  if (!window.isSecureContext)
+    return `Live camera needs a secure page (https:// or localhost) — this is ${location.origin}. Try a sample or upload a photo.`;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+    return 'This browser (or embedded preview) has no camera access — open the page in Chrome, Safari or Firefox.';
+  const name = err && err.name;
+  if (name === 'NotAllowedError' || name === 'SecurityError')
+    return 'Camera permission denied — allow it from the camera icon in the address bar. On a Mac, also check System Settings › Privacy & Security › Camera for your browser.';
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No camera found on this device — try a sample or upload a photo.';
+  if (name === 'NotReadableError' || name === 'AbortError') return 'The camera is busy (another app or tab may be using it) — close it and try again.';
+  return `Camera failed (${name || 'unknown error'}${err && err.message ? ': ' + err.message : ''}).`;
+}
+
+async function openStream() {
+  const md = navigator.mediaDevices;
+  try {
+    stream = await md.getUserMedia({audio: false, video: {facingMode: facing, width: {ideal: 640}, height: {ideal: 480}}});
+  } catch (err) {
+    // some devices reject the preferred size/facing — retry with "any camera"
+    if (err.name !== 'OverconstrainedError' && err.name !== 'NotReadableError' && err.name !== 'TypeError') throw err;
+    stream = await md.getUserMedia({audio: false, video: true});
+  }
+  video.srcObject = stream;
+  try { await video.play(); } catch (e) { if (e.name !== 'AbortError') throw e; }
+}
+function closeStream() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; video.srcObject = null;
+}
+function loop(ts) {
+  raf = requestAnimationFrame(loop);
+  if (frozen || !stream || video.readyState < 2 || !video.videoWidth || ts - last < 1000 / LIVE_FPS) return;
+  last = ts; gotFrame = true;
+  source = grab(video, video.videoWidth, video.videoHeight, facing === 'user');
+  render();
+}
+async function startCamera() {
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setStatus(cameraProblem()); return; }
+  try {
+    setStatus('Asking for camera… (check for a permission prompt)');
+    await openStream();
+    gotFrame = false;
+    setTimeout(() => { if (live && !frozen && !gotFrame) setStatus('Camera is on but no picture is arriving — try Stop camera, then Live camera again, or another browser.'); }, 4000);
+    live = true; frozen = false;
+    camBtn.textContent = '■ Stop camera'; camBtn.setAttribute('aria-pressed', 'true');
+    snapBtn.disabled = false; snapBtn.textContent = '⏸ Freeze frame';
+    markSource(null); setStatus('Live — camera frames are processed on your device, nothing is uploaded.');
+    navigator.mediaDevices.enumerateDevices().then(ds => { flipBtn.hidden = ds.filter(d => d.kind === 'videoinput').length < 2; }).catch(() => {});
+    cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
+  } catch (err) {
+    closeStream(); live = false;
+    console.warn('1bit sim camera:', err);
+    setStatus(cameraProblem(err));
+  }
+}
+function stopCamera() {
+  if (!live) return;
+  live = false; frozen = false;
+  cancelAnimationFrame(raf); closeStream();
+  camBtn.textContent = '● Live camera'; camBtn.setAttribute('aria-pressed', 'false');
+  snapBtn.disabled = true; snapBtn.textContent = '⏸ Freeze frame'; flipBtn.hidden = true;
+  setStatus('Camera off.');
+}
+camBtn.addEventListener('click', () => live ? stopCamera() : startCamera());
+flipBtn.addEventListener('click', async () => {
+  facing = facing === 'user' ? 'environment' : 'user';
+  closeStream();
+  try { await openStream(); } catch { stopCamera(); setStatus('Could not switch camera.'); }
+});
+snapBtn.addEventListener('click', () => {
+  frozen = !frozen;
+  snapBtn.textContent = frozen ? '▶ Resume live' : '⏸ Freeze frame';
+  setStatus(frozen ? 'Frozen — tweak the effect, or save the print.' : 'Live.');
+  if (frozen) render();
+});
+
+// pause the stream (camera light off) when out of view or tab hidden; resume when back
+async function syncStream() {
+  if (!live) return;
+  const want = onScreen && !document.hidden;
+  if (!want && stream) { cancelAnimationFrame(raf); closeStream(); }
+  else if (want && !stream) { try { await openStream(); raf = requestAnimationFrame(loop); } catch { stopCamera(); } }
+}
+document.addEventListener('visibilitychange', syncStream);
+addEventListener('pagehide', () => closeStream());
+if ('IntersectionObserver' in window)
+  new IntersectionObserver(es => { onScreen = es[0].isIntersecting; syncStream(); }).observe(out);
+
+// ── Save ─────────────────────────────────────────────────
+$('saveBtn').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.download = `1bitcam_${FX[+fxSel.value].name}.png`;
+  a.href = out.toDataURL('image/png');
+  a.click();
+});
+
+// start on the test card
+useImage(testcard, 'testcard', 'Test card');
+</script>
+</body>
+</html>
