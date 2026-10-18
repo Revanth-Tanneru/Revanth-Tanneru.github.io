@@ -4,15 +4,15 @@
 <title>1 Bit Camera simulator</title>
 <link rel="icon" href="data:,">
 <style>
-:root{--bg:#eef1f6;--fg:#0e1b30;--mut:#45526c;--card:#e3e8f0;--acc:#0bb3a0;--line:#c9d1de;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1b30;--fg:#eef1f6;--mut:#7d89a3;--card:#16233b;--acc:#2fd3bf;--line:#26334d;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#0e1b30;--fg:#eef1f6;--mut:#7d89a3;--card:#16233b;--acc:#2fd3bf;--line:#26334d;color-scheme:dark}
+:root{--bg:#f7f5f0;--fg:#111111;--mut:#4d4a45;--card:#ebe8e1;--acc:#c4211a;--line:#d6d1c6;--on-acc:#ffffff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f0f0f;--fg:#f2f0eb;--mut:#a8a39a;--card:#1b1b1b;--acc:#ff5a4e;--line:#333333;--on-acc:#0f0f0f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f0f0f;--fg:#f2f0eb;--mut:#a8a39a;--card:#1b1b1b;--acc:#ff5a4e;--line:#333333;--on-acc:#0f0f0f;color-scheme:dark}
 *,*::before,*::after{box-sizing:inherit}
 html,body{margin:0}body{background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif;padding:12px;max-width:1100px;margin:auto}
 h1{font-size:20px;margin:4px 0}h2{font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}p{color:var(--mut);margin:4px 0 10px}
 button,.btn,select{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:inherit;font-size:14px;cursor:pointer}
 button:hover,.btn:hover{border-color:var(--acc)}button:disabled{opacity:.45;cursor:default}
-.pri{background:var(--acc);border-color:var(--acc);color:#04201c;font-weight:600}
+.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc);font-weight:600}
 .src{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
 .samples{display:flex;flex-wrap:wrap;gap:6px}
 .sample{padding:0;width:52px;height:52px;overflow:hidden;border-radius:8px;position:relative}
