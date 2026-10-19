@@ -90,7 +90,8 @@ p>.08&&load();
 if(!flying()){demo.style.transform=swapped?"":`translateY(${((1-u)*60).toFixed(1)}px)`;unfold&&(unfold.style.clipPath="");demo.style.pointerEvents=!swapped&&u>.6?"auto":"none"}
 else{demo.style.transform="";
 // the decahedron: slot → centre of the designer (grows) → docks big beside it, then its tag appears
-const w=orb.offsetWidth,a=rel(slot),c=rel(unfold||demo),t=rel(target);a.y-=shift;
+const tgM=stage.querySelector("[data-orb-target-m]"),tg=target.offsetWidth||!tgM?target:tgM;   // phones dock beside the heading
+const w=orb.offsetWidth,a=rel(slot),c=rel(unfold||demo),t=rel(tg);a.y-=shift;
 const s0=a.w/w,s1=Math.min(1.15,Math.min(c.w,c.h)*.95/w),s2=t.w/w;
 const t1=ease(clamp((p-.04)/.34)),t2=ease(clamp((p-.5)/.25));
 placeOrb(lerp(lerp(a.x,c.x,t1),t.x,t2),lerp(lerp(a.y,c.y,t1),t.y,t2),lerp(lerp(s0,s1,t1),s2,t2));

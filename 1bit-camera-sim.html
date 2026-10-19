@@ -36,7 +36,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
 #status{min-height:1.4em}
 #stats{color:var(--mut)}
-</style></head>
+@media (pointer:coarse){input[type=checkbox]{width:22px;height:22px;vertical-align:middle}input[type=range]{height:32px}input[type=color]{min-width:44px;min-height:36px}input[type=number]{min-height:36px;font-size:16px}button,.btn,select,label.btn{min-height:44px}}</style></head>
 <body>
 <h1>1 Bit Camera simulator</h1>
 <p>Each frame is turned to greyscale, scaled to the printer&rsquo;s 384 dots and run through the same effect code as the camera firmware. Pick a source, then an effect.</p>
