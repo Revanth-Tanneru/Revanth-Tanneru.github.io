@@ -10,3 +10,13 @@ addEventListener("scroll",()=>{if(head.classList.contains("is-open"))set(!1)},{p
 matchMedia("(min-width: 761px)").addEventListener?.("change",e=>{if(e.matches)set(!1)})})()}catch{}
 // every page: publish the real header height so pinned/sticky bits sit right under it
 try{(()=>{const h=document.querySelector(".site-head");if(!h)return;const set=()=>document.documentElement.style.setProperty("--head-h",h.offsetHeight+"px");"ResizeObserver"in window?new ResizeObserver(set).observe(h):addEventListener("resize",set);set()})()}catch{}
+// light / dark switch: dark is the default; the choice is remembered and shared with the embedded demos
+try{(()=>{const root=document.documentElement,btn=document.querySelector("[data-theme-toggle]");
+const apply=t=>{if(t==="light")root.dataset.theme="light";else delete root.dataset.theme;
+  if(btn){const light=t==="light";btn.querySelector(".theme-toggle__txt").textContent=light?"Dark":"Light";btn.setAttribute("aria-label",light?"Switch to dark mode":"Switch to light mode");btn.setAttribute("aria-pressed",String(light))}
+  document.querySelectorAll("iframe").forEach(f=>{try{const d=f.contentDocument?.documentElement;if(d){if(t==="light")d.dataset.theme="light";else delete d.dataset.theme}}catch{}});
+  dispatchEvent(new CustomEvent("themechange",{detail:t}))};
+let cur=(()=>{try{return localStorage.getItem("theme")==="light"?"light":"dark"}catch{return"dark"}})();apply(cur);
+btn?.addEventListener("click",()=>{cur=cur==="light"?"dark":"light";try{localStorage.setItem("theme",cur)}catch{}apply(cur)});
+addEventListener("storage",e=>{if(e.key==="theme"){cur=e.newValue==="light"?"light":"dark";apply(cur)}});
+document.querySelectorAll("iframe").forEach(f=>f.addEventListener("load",()=>apply(cur)))})()}catch{}
